@@ -135,6 +135,39 @@ describe("The peer connection", function () {
 
     describe("when gathering ICE candidates", function () {
 
+        it("will filter duplicate candidates produced", function() {
+            var firstIceCandidate = "123";
+            var secondIceCandidate = "456";
+            var thirdIceCandidate = "123";
+
+            runs(function() {
+                asyncExecService.setInterval.andCallFake(function (callback) {
+                    rtcPeerConnection.onicecandidate({
+                        candidate: firstIceCandidate
+                    });
+                    rtcPeerConnection.onicecandidate({
+                        candidate: secondIceCandidate
+                    });
+                    rtcPeerConnection.onicecandidate({
+                        candidate: thirdIceCandidate
+                    });
+                    rtcPeerConnection.localDescription = LOCAL_DESCRIPTION;
+                    rtcPeerConnection.iceGatheringState = "complete";
+                    setTimeout(callback, 10);
+                    return INTERVAL_ID;
+                
+                });
+
+                peerConnection.waitForIceCandidates().then(successCallback).catch(failureCallback);
+            });
+
+            waits(100);
+
+            runs(function() {
+                expect(successCallback).toHaveBeenCalledWith({sessionDescription: LOCAL_DESCRIPTION, iceCandidates: [firstIceCandidate, secondIceCandidate]});
+            });
+        });
+
         describe("when completed by state being 'complete'", function() {
 
             var firstIceCandidate = "123";
