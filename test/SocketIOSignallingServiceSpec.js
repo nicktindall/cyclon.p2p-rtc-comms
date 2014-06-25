@@ -3,6 +3,7 @@
 var Promise = require("bluebird");
 var SocketIOSignallingService = require("../lib/SocketIOSignallingService");
 var ClientMocks = require("./ClientMocks");
+var UnreachableError = require("cyclon.p2p").UnreachableError;
 
 describe("The socket.io signalling service", function () {
 
@@ -125,25 +126,52 @@ describe("The socket.io signalling service", function () {
                 expect(failureCallback).not.toHaveBeenCalled();
             });
         });
+
+        it("should throw an UnreachableError when the peer has no signalling servers specified", function() {
+
+            var errorIsInstanceOfUnreachableError = false;
+            var destinationNodeWithNoSignallingServers = {
+                id: "DESTINATION_ID",
+                comms: {
+                    signallingServers: []
+                }
+            };
+
+            runs(function() {
+                signallingService.sendAnswer(destinationNodeWithNoSignallingServers, SESSION_DESCRIPTION, ICE_CANDIDATES)
+                    .then(successCallback)
+                    .catch(function(error) {
+                        errorIsInstanceOfUnreachableError = error instanceof UnreachableError;
+                    });
+            });
+
+            waits(10);
+
+            runs(function() {
+                expect(errorIsInstanceOfUnreachableError).toBeTruthy();
+                expect(successCallback).not.toHaveBeenCalled();
+            })
+        });
+
+        it("should throw an UnreachableError when the peer is no longer connected to any of its signalling servers", function() {
+
+            httpRequestService.post.andReturn(Promise.reject(new Error("404 received")));
+            var errorIsInstanceOfUnreachableError = false;
+
+            runs(function() {
+                signallingService.sendAnswer(DESTINATION_NODE, SESSION_DESCRIPTION, ICE_CANDIDATES)
+                    .then(successCallback)
+                    .catch(function(error) {
+                        errorIsInstanceOfUnreachableError = error instanceof UnreachableError;
+                    });
+            });
+
+            waits(10);
+
+            runs(function() {
+                expect(errorIsInstanceOfUnreachableError).toBeTruthy();
+                expect(successCallback).not.toHaveBeenCalled();
+            })
+        });
     });
-
-    /**
-     * Capture an event handler
-     *
-     * @param eventToCapture
-     */
-    function HandlerCaptor(eventToCapture) {
-
-        var capturedHandler;
-
-        this.capture = function (event, handler) {
-            if (event === eventToCapture) {
-                capturedHandler = handler;
-            }
-        };
-
-        this.getHandler = function () {
-            return capturedHandler;
-        }
-    }
 });
