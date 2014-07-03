@@ -19,15 +19,11 @@ describe("The Incoming ShuffleState", function () {
     var TIMEOUT_ID = "TIMEOUT_ID";
 
     var localCyclonNode,
-        answerConnection,
-        signallingService,
         asyncExecService,
-        dataChannel,
         loggingService,
-        sendAnswerPromise,
-        messagingUtilities,
         successCallback,
-        failureCallback;
+        failureCallback,
+        channel;
 
     var incomingShuffleState;
 
@@ -36,38 +32,23 @@ describe("The Incoming ShuffleState", function () {
         failureCallback = ClientMocks.createFailureCallback();
 
         localCyclonNode = ClientMocks.mockCyclonNode();
-        answerConnection = ClientMocks.mockPeerConnection();
-        signallingService = ClientMocks.mockSignallingService();
         asyncExecService = ClientMocks.mockAsyncExecService();
-        dataChannel = ClientMocks.mockRtcDataChannel();
         loggingService = ClientMocks.mockLoggingService();
-        messagingUtilities = ClientMocks.mockMessagingUtilities();
+        channel = ClientMocks.mockChannel();
 
         //
         // Mock behaviour
         //
-        dataChannel.readyState = "open";
-        sendAnswerPromise = Promise.resolve(null);
-        signallingService.sendAnswer.andReturn(sendAnswerPromise);
         localCyclonNode.handleShuffleRequest.andReturn(RESPONSE_PAYLOAD);
 
-        incomingShuffleState = new IncomingShuffleState(localCyclonNode, answerConnection, SOURCE_POINTER, signallingService, asyncExecService, loggingService, messagingUtilities);
-    });
-
-    describe("when sending an answer", function () {
-
-        it("delegates to the signalling service", function () {
-            var result = incomingShuffleState.sendAnswer(LOCAL_PARAMETERS);
-            expect(signallingService.sendAnswer).toHaveBeenCalledWith(SOURCE_POINTER, LOCAL_SESSION_DESCRIPTION, LOCAL_ICE_CANDIDATES);
-            expect(result).toBe(sendAnswerPromise);
-        });
+        incomingShuffleState = new IncomingShuffleState(localCyclonNode, SOURCE_POINTER, asyncExecService, loggingService);
     });
 
     describe("when processing a shuffle request", function () {
 
         describe("and everything succeeds", function() {
             beforeEach(function () {
-                messagingUtilities.waitForChannelMessage.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
+                channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
                 asyncExecService.setTimeout.andCallFake(function (callback) {
                     callback();
                 });
@@ -75,15 +56,15 @@ describe("The Incoming ShuffleState", function () {
 
             it("delegates to the node to handle the request, then sends the response via the data channel", function () {
                 runs(function () {
-                    incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback, failureCallback);
+                    incomingShuffleState.processShuffleRequest(channel).then(successCallback, failureCallback);
                 });
 
                 waits(5);
 
                 runs(function () {
                     expect(localCyclonNode.handleShuffleRequest).toHaveBeenCalledWith(SOURCE_POINTER, REQUEST_PAYLOAD);
-                    expect(dataChannel.send).toHaveBeenCalledWith(JSON.stringify({type: "shuffleResponse", payload: RESPONSE_PAYLOAD}));
-                    expect(successCallback).toHaveBeenCalledWith(dataChannel);
+                    expect(channel.send).toHaveBeenCalledWith(JSON.stringify({type: "shuffleResponse", payload: RESPONSE_PAYLOAD}));
+                    expect(successCallback).toHaveBeenCalledWith(channel);
                     expect(failureCallback).not.toHaveBeenCalled();
                 });
             });
@@ -95,8 +76,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     timeoutError = new Promise.TimeoutError();
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.reject(timeoutError));
-                    incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback).catch(failureCallback);
+                    channel.receive.andReturn(Promise.reject(timeoutError));
+                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -117,8 +98,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
-                    incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback).catch(failureCallback).cancel();
+                    channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
+                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback).cancel();
                 });
 
                 waits(100);
@@ -141,8 +122,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     cancellationError = new Promise.CancellationError();
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.reject(cancellationError));
-                    incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback).catch(failureCallback).cancel();
+                    channel.receive.andReturn(Promise.reject(cancellationError));
+                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback).cancel();
                 });
 
                 waits(100);
@@ -164,15 +145,15 @@ describe("The Incoming ShuffleState", function () {
         describe("and everything succeeds", function() {
             beforeEach(function() {
                 runs(function() {
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.resolve(null));
-                    incomingShuffleState.waitForResponseAcknowledgement(dataChannel).then(successCallback).catch(failureCallback);
+                    channel.receive.andReturn(Promise.resolve(null));
+                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
             });
 
             it("delegates to the messaging utilities to receive the acknowledgement", function() {
-                expect(messagingUtilities.waitForChannelMessage).toHaveBeenCalledWith("shuffleResponseAcknowledgement", dataChannel, jasmine.any(Number), SOURCE_POINTER);
+                expect(channel.receive).toHaveBeenCalledWith("shuffleResponseAcknowledgement", jasmine.any(Number));
             });
 
             it("resolves", function() {
@@ -188,8 +169,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     timeoutError = new Promise.TimeoutError();
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.reject(timeoutError));
-                    incomingShuffleState.waitForResponseAcknowledgement(dataChannel).then(successCallback).catch(failureCallback);
+                    channel.receive.andReturn(Promise.reject(timeoutError));
+                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -208,8 +189,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     cancellationError = new Promise.CancellationError();
-                    messagingUtilities.waitForChannelMessage.andReturn(Promise.reject(cancellationError));
-                    incomingShuffleState.waitForResponseAcknowledgement(dataChannel).then(successCallback).catch(failureCallback);
+                    channel.receive.andReturn(Promise.reject(cancellationError));
+                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -227,8 +208,8 @@ describe("The Incoming ShuffleState", function () {
         beforeEach(function() {
             runs(function() {
                 asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
-                messagingUtilities.waitForChannelMessage.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
-                incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback).catch(failureCallback);
+                channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
+                incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
             });
 
             waits(10);
@@ -249,8 +230,8 @@ describe("The Incoming ShuffleState", function () {
 
         beforeEach(function() {
             lastOutstandingPromise = ClientMocks.mockPromise();
-            messagingUtilities.waitForChannelMessage.andReturn(lastOutstandingPromise);
-            incomingShuffleState.processShuffleRequest(dataChannel).then(successCallback).catch(failureCallback);
+            channel.receive.andReturn(lastOutstandingPromise);
+            incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
         });
 
         describe("and the last outstanding promise is pending", function() {

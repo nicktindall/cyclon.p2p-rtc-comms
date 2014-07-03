@@ -16,6 +16,14 @@ module.exports.mockCyclonNode = function () {
     return jasmine.createSpyObj('cyclonNode', ['getId', 'start', 'executeShuffle', 'createNewPointer', 'handleShuffleRequest', 'handleShuffleResponse', 'emit']);
 };
 
+module.exports.mockRtc = function () {
+    return jasmine.createSpyObj('rtc', ['join', 'onChannel', 'openChannel']);
+};
+
+module.exports.mockChannel = function() {
+    return jasmine.createSpyObj('channel', ['getRemotePeer', 'createOffer', 'createAnswer', 'sendAnswer', 'waitForChannelEstablishment', 'waitForIceCandidates', 'sendOffer', 'handleAnswer', 'waitForChannelToOpen', 'send', 'receive', 'destroy']);
+}
+
 module.exports.mockAsyncExecService = function () {
     return jasmine.createSpyObj('asyncExecService', ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval']);
 };
@@ -49,11 +57,11 @@ module.exports.mockShuffleStateFactory = function () {
 };
 
 module.exports.mockOutgoingShuffleState = function (name) {
-    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendOffer', 'sendShuffleRequest', 'processShuffleResponse', 'getDestinationId', 'sendResponseAcknowledgement', 'close', 'handleAnswer', 'waitForAnswer', 'cancel']);
+    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendShuffleRequest', 'processShuffleResponse', 'sendResponseAcknowledgement', 'closeChannel', 'close', 'cancel']);
 };
 
 module.exports.mockIncomingShuffleState = function () {
-    return jasmine.createSpyObj('incomingShuffleState', ['sendAnswer', 'processShuffleRequest', 'close', 'cancel', 'waitForResponseAcknowledgement']);
+    return jasmine.createSpyObj('incomingShuffleState', ['processShuffleRequest', 'waitForResponseAcknowledgement', 'close', 'cancel']);
 };
 
 module.exports.mockNeighbourSet = function () {

@@ -1,10 +1,10 @@
 'use strict';
 
+var rtc = require("cyclon.p2p-rtc");
 var cyclon = require("cyclon.p2p");
 var cyclonWebrtc = require("../lib/builder.js");
-var NodeJsRTCObjectFactory = require("../lib/NodeJsRTCObjectFactory.js");
 
-describe("The Cyclon-webrtc export", function() {
+describe("cyclon.p2p-webrtc-client", function() {
 
 	it("exports a builder function", function() {
 		expect(cyclonWebrtc.builder).toEqual(any(Function));
@@ -29,7 +29,7 @@ describe("The Cyclon-webrtc export", function() {
 		});
 
 		it("allows the specification of the RTCObjectFactory", function() {
-			expect(cyclonWebrtc.builder().withRTCObjectFactory(new NodeJsRTCObjectFactory()).build() instanceof cyclon.CyclonNode).toBeTruthy();
+			expect(cyclonWebrtc.builder().withRTCObjectFactory(new rtc.NodeJsRTCObjectFactory()).build() instanceof cyclon.CyclonNode).toBeTruthy();
 		});
 
 		it("allows the specification of the metadata provicers", function() {
