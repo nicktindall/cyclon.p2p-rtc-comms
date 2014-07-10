@@ -48,7 +48,7 @@ describe("The Incoming ShuffleState", function () {
 
         describe("and everything succeeds", function() {
             beforeEach(function () {
-                channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
+                channel.receive.andReturn(Promise.resolve(REQUEST_PAYLOAD));
                 asyncExecService.setTimeout.andCallFake(function (callback) {
                     callback();
                 });
@@ -56,14 +56,15 @@ describe("The Incoming ShuffleState", function () {
 
             it("delegates to the node to handle the request, then sends the response via the data channel", function () {
                 runs(function () {
-                    incomingShuffleState.processShuffleRequest(channel).then(successCallback, failureCallback);
+                    incomingShuffleState.processShuffleRequest(channel)
+                        .then(successCallback).catch(failureCallback);
                 });
 
                 waits(5);
 
                 runs(function () {
                     expect(localCyclonNode.handleShuffleRequest).toHaveBeenCalledWith(SOURCE_POINTER, REQUEST_PAYLOAD);
-                    expect(channel.send).toHaveBeenCalledWith(JSON.stringify({type: "shuffleResponse", payload: RESPONSE_PAYLOAD}));
+                    expect(channel.send).toHaveBeenCalledWith("shuffleResponse", RESPONSE_PAYLOAD);
                     expect(successCallback).toHaveBeenCalledWith(channel);
                     expect(failureCallback).not.toHaveBeenCalled();
                 });
@@ -77,7 +78,8 @@ describe("The Incoming ShuffleState", function () {
                 runs(function() {
                     timeoutError = new Promise.TimeoutError();
                     channel.receive.andReturn(Promise.reject(timeoutError));
-                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
+                    incomingShuffleState.processShuffleRequest(channel)
+                        .then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -99,7 +101,8 @@ describe("The Incoming ShuffleState", function () {
                 runs(function() {
                     asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
                     channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
-                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback).cancel();
+                    incomingShuffleState.processShuffleRequest(channel)
+                        .then(successCallback).catch(failureCallback).cancel();
                 });
 
                 waits(100);
@@ -123,7 +126,8 @@ describe("The Incoming ShuffleState", function () {
                 runs(function() {
                     cancellationError = new Promise.CancellationError();
                     channel.receive.andReturn(Promise.reject(cancellationError));
-                    incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback).cancel();
+                    incomingShuffleState.processShuffleRequest(channel)
+                        .then(successCallback).catch(failureCallback).cancel();
                 });
 
                 waits(100);
@@ -146,7 +150,8 @@ describe("The Incoming ShuffleState", function () {
             beforeEach(function() {
                 runs(function() {
                     channel.receive.andReturn(Promise.resolve(null));
-                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
+                    incomingShuffleState.waitForResponseAcknowledgement(channel)
+                        .then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -170,7 +175,8 @@ describe("The Incoming ShuffleState", function () {
                 runs(function() {
                     timeoutError = new Promise.TimeoutError();
                     channel.receive.andReturn(Promise.reject(timeoutError));
-                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
+                    incomingShuffleState.waitForResponseAcknowledgement(channel)
+                        .then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -190,7 +196,8 @@ describe("The Incoming ShuffleState", function () {
                 runs(function() {
                     cancellationError = new Promise.CancellationError();
                     channel.receive.andReturn(Promise.reject(cancellationError));
-                    incomingShuffleState.waitForResponseAcknowledgement(channel).then(successCallback).catch(failureCallback);
+                    incomingShuffleState.waitForResponseAcknowledgement(channel)
+                        .then(successCallback).catch(failureCallback);
                 });
 
                 waits(10);
@@ -209,7 +216,8 @@ describe("The Incoming ShuffleState", function () {
             runs(function() {
                 asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
                 channel.receive.andReturn(Promise.resolve({payload: REQUEST_PAYLOAD}));
-                incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
+                incomingShuffleState.processShuffleRequest(channel)
+                    .then(successCallback).catch(failureCallback);
             });
 
             waits(10);
@@ -231,7 +239,8 @@ describe("The Incoming ShuffleState", function () {
         beforeEach(function() {
             lastOutstandingPromise = ClientMocks.mockPromise();
             channel.receive.andReturn(lastOutstandingPromise);
-            incomingShuffleState.processShuffleRequest(channel).then(successCallback).catch(failureCallback);
+            incomingShuffleState.processShuffleRequest(channel)
+                .then(successCallback).catch(failureCallback);
         });
 
         describe("and the last outstanding promise is pending", function() {

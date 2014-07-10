@@ -60,7 +60,7 @@ describe("The Outgoing ShuffleState", function () {
             });
 
             it("should set a timeout to send the message over the data channel", function () {
-                expect(channel.send).toHaveBeenCalledWith(JSON.stringify({type: "shuffleRequest", payload: SHUFFLE_SET}));
+                expect(channel.send).toHaveBeenCalledWith("shuffleRequest", SHUFFLE_SET);
             });
 
             it("should resolve with the channel", function () {
@@ -118,7 +118,7 @@ describe("The Outgoing ShuffleState", function () {
 
             beforeEach(function () {
                 runs(function () {
-                    channel.receive.andReturn(Promise.resolve({payload: RESPONSE_PAYLOAD}));
+                    channel.receive.andReturn(Promise.resolve(RESPONSE_PAYLOAD));
                     outgoingShuffleState.processShuffleResponse(channel).then(successCallback).catch(failureCallback);
                 });
 
@@ -151,7 +151,7 @@ describe("The Outgoing ShuffleState", function () {
             });
 
             it("sends the acknowledgement over the channel", function () {
-                expect(channel.send).toHaveBeenCalledWith(JSON.stringify({type: "shuffleResponseAcknowledgement"}));
+                expect(channel.send).toHaveBeenCalledWith("shuffleResponseAcknowledgement");
             });
 
             it("resolves after a delay", function() {

@@ -135,6 +135,7 @@ describe("The WebRTC Comms layer", function () {
 
             var firstOutgoingState = createSucceedingOutgoingShuffleState("firstOutgoingState");
             var secondOutgoingState = createSucceedingOutgoingShuffleState("secondOutgoingState");
+            var secondFailureCallback = jasmine.createSpy('secondFailureCallback');
 
             runs(function () {
                 var waitForChannelToOpenPromise = new Promise(function () {
@@ -152,8 +153,15 @@ describe("The WebRTC Comms layer", function () {
             waits(100);
 
             runs(function () {
+                var waitForChannelToOpenPromise = new Promise(function () {
+                }).cancellable();
+                rtc.openChannel.andReturn(waitForChannelToOpenPromise);   // it gets held up at waiting for the channel to open
+                secondOutgoingState.cancel.andCallFake(function () {
+                    waitForChannelToOpenPromise.cancel();
+                });
                 shuffleStateFactory.createOutgoingShuffleState.andReturn(secondOutgoingState);
-                comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet);
+                comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
+                    .catch(secondFailureCallback);
             });
 
             waits(100);
@@ -164,6 +172,7 @@ describe("The WebRTC Comms layer", function () {
                 expect(firstOutgoingState.close).toHaveBeenCalled();
 
                 expect(failureCallback).toHaveBeenCalledWith(jasmine.any(Promise.CancellationError));
+                expect(secondFailureCallback).not.toHaveBeenCalled();
             });
         });
     });
