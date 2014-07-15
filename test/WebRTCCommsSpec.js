@@ -11,8 +11,7 @@ describe("The WebRTC Comms layer", function () {
         PROCESS_SHUFFLE_RESPONSE_RESULT = "PROCESS_SHUFFLE_RESULT_RESULT",
         SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT = "SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT",
         PROCESS_SHUFFLE_REQUEST_RESULT = "PROCESS_SHUFFLE_REQUEST_RESULT",
-        WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT = "WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT",
-        CLOSE_CHANNEL_RESULT = "CLOSE_CHANNEL_RESULT";
+        WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT = "WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT";
 
     var comms,
         channel,
@@ -42,7 +41,7 @@ describe("The WebRTC Comms layer", function () {
 
         destinationNodePointer = createCacheEntry("destinationNodePointer", 12);
         shuffleSet = [createCacheEntry("a", 456), createCacheEntry("b", 123), createCacheEntry("c", 222)];
-        
+
         //
         // Mock behaviour
         //
@@ -50,7 +49,7 @@ describe("The WebRTC Comms layer", function () {
         channel.getRemotePeer.andReturn(destinationNodePointer);
         shuffleStateFactory.createOutgoingShuffleState.andReturn(outgoingShuffleState);
         shuffleStateFactory.createIncomingShuffleState.andReturn(incomingShuffleState);
-        
+
         comms = new WebRTCComms(rtc, shuffleStateFactory, loggingService);
     });
 
@@ -74,7 +73,7 @@ describe("The WebRTC Comms layer", function () {
         beforeEach(function () {
             comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet);
         });
-        
+
         it("should create a new outgoing shuffle state", function () {
             expect(shuffleStateFactory.createOutgoingShuffleState).toHaveBeenCalledWith(localCyclonNode, destinationNodePointer, shuffleSet);
         });
@@ -99,8 +98,7 @@ describe("The WebRTC Comms layer", function () {
                 expect(outgoingShuffleState.sendShuffleRequest).toHaveBeenCalledWith(WAIT_FOR_CHANNEL_TO_OPEN_RESULT);
                 expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith(SEND_SHUFFLE_REQUEST_RESULT);
                 expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith(PROCESS_SHUFFLE_RESPONSE_RESULT);
-                expect(outgoingShuffleState.closeChannel).toHaveBeenCalledWith(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT);
-                expect(successCallback).toHaveBeenCalledWith(CLOSE_CHANNEL_RESULT);
+                expect(successCallback).toHaveBeenCalledWith(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT);
 
                 // Clean up occurred
                 expect(outgoingShuffleState.close).toHaveBeenCalled();
@@ -251,7 +249,6 @@ describe("The WebRTC Comms layer", function () {
         outgoingShuffleState.sendShuffleRequest.andReturn(Promise.resolve(SEND_SHUFFLE_REQUEST_RESULT));
         outgoingShuffleState.processShuffleResponse.andReturn(Promise.resolve(PROCESS_SHUFFLE_RESPONSE_RESULT));
         outgoingShuffleState.sendResponseAcknowledgement.andReturn(Promise.resolve(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT));
-        outgoingShuffleState.closeChannel.andReturn(Promise.resolve(CLOSE_CHANNEL_RESULT));
         return outgoingShuffleState;
     }
 

@@ -21,7 +21,7 @@ module.exports.mockRtc = function () {
 };
 
 module.exports.mockChannel = function() {
-    return jasmine.createSpyObj('channel', ['getRemotePeer', 'createOffer', 'createAnswer', 'sendAnswer', 'waitForChannelEstablishment', 'waitForIceCandidates', 'sendOffer', 'handleAnswer', 'waitForChannelToOpen', 'send', 'receive', 'destroy']);
+    return jasmine.createSpyObj('channel', ['getRemotePeer', 'createOffer', 'createAnswer', 'sendAnswer', 'waitForChannelEstablishment', 'waitForIceCandidates', 'sendOffer', 'handleAnswer', 'waitForChannelToOpen', 'send', 'receive', 'close', 'cancel']);
 }
 
 module.exports.mockAsyncExecService = function () {
@@ -57,7 +57,7 @@ module.exports.mockShuffleStateFactory = function () {
 };
 
 module.exports.mockOutgoingShuffleState = function (name) {
-    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendShuffleRequest', 'processShuffleResponse', 'sendResponseAcknowledgement', 'closeChannel', 'close', 'cancel']);
+    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendShuffleRequest', 'processShuffleResponse', 'sendResponseAcknowledgement', 'close', 'cancel']);
 };
 
 module.exports.mockIncomingShuffleState = function () {
@@ -107,7 +107,3 @@ module.exports.mockPromise = function() {
     mockPromise.catch.andReturn(mockPromise);
     return mockPromise;
 };
-
-
-
-
