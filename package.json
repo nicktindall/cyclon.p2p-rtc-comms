@@ -1,13 +1,13 @@
 {
-  "name": "cyclon.p2p-webrtc-client",
-  "version": "0.0.6",
+  "name": "cyclon.p2p-rtc-comms",
+  "version": "0.0.1",
   "description": "A WebRTC communications module for the cyclon.p2p framework",
   "keywords": [
     "webrtc",
     "cyclon.p2p"
   ],
-  "homepage": "https://gitub.com/nicktindall/cyclon-webrtc/wiki",
-  "bugs": "https://github.com/nicktindall/cyclon-webrtc/issues",
+  "homepage": "https://gitub.com/nicktindall/cyclon.p2p-rtc-comms/wiki",
+  "bugs": "https://github.com/nicktindall/cyclon.p2p-rtc-comms/issues",
   "license": "MIT",
   "author": {
     "name": "Nick Tindall",
@@ -23,7 +23,7 @@
   "main": "lib/builder.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/nicktindall/cyclon-webrtc.git"
+    "url": "https://github.com/nicktindall/cyclon.p2p-rtc-comms.git"
   },
   "scripts": {
     "test": "make test"
@@ -35,7 +35,7 @@
   "dependencies": {
     "bluebird": "2.1.x",
     "cyclon.p2p": "0.0.x",
-    "cyclon.p2p-rtc": "0.0.x",
+    "cyclon.p2p-rtc-client": "0.0.x",
     "socket.io-client": "1.0.x"
   }
 }
