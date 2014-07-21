@@ -17,7 +17,7 @@ module.exports.mockCyclonNode = function () {
 };
 
 module.exports.mockRtc = function () {
-    return jasmine.createSpyObj('rtc', ['join', 'onChannel', 'openChannel']);
+    return jasmine.createSpyObj('rtc', ['join', 'onChannel', 'openChannel', 'on']);
 };
 
 module.exports.mockChannel = function() {
