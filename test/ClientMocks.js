@@ -9,7 +9,7 @@ module.exports.mockMessagingUtilities = function () {
 };
 
 module.exports.mockSignallingService = function () {
-    return jasmine.createSpyObj('signallingService', ['initialize', 'getSignallingInfo', 'sendOffer', 'sendAnswer', 'on', 'removeListener']);
+    return jasmine.createSpyObj('signallingService', ['connect', 'getSignallingInfo', 'sendOffer', 'sendAnswer', 'on', 'removeListener']);
 };
 
 module.exports.mockCyclonNode = function () {
@@ -17,12 +17,12 @@ module.exports.mockCyclonNode = function () {
 };
 
 module.exports.mockRtc = function () {
-    return jasmine.createSpyObj('rtc', ['join', 'onChannel', 'openChannel', 'on']);
+    return jasmine.createSpyObj('rtc', ['connect', 'onChannel', 'openChannel', 'on']);
 };
 
 module.exports.mockChannel = function() {
     return jasmine.createSpyObj('channel', ['getRemotePeer', 'createOffer', 'createAnswer', 'sendAnswer', 'waitForChannelEstablishment', 'waitForIceCandidates', 'sendOffer', 'handleAnswer', 'waitForChannelToOpen', 'send', 'receive', 'close', 'cancel']);
-}
+};
 
 module.exports.mockAsyncExecService = function () {
     return jasmine.createSpyObj('asyncExecService', ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval']);

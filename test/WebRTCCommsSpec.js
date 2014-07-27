@@ -60,7 +60,7 @@ describe("The WebRTC Comms layer", function () {
         });
 
         it("should initialize the RTC layer", function () {
-            expect(rtc.join).toHaveBeenCalledWith(localCyclonNode);
+            expect(rtc.connect).toHaveBeenCalledWith(localCyclonNode);
         });
 
         it("should add a listener for incoming shuffle channels", function() {
