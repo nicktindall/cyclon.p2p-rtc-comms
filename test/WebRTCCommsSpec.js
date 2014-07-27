@@ -24,7 +24,8 @@ describe("The WebRTC Comms layer", function () {
         incomingShuffleState,
         loggingService,
         successCallback,
-        failureCallback;
+        failureCallback,
+        metadataProviders;
 
     beforeEach(function () {
         successCallback = ClientMocks.createSuccessCallback();
@@ -38,6 +39,7 @@ describe("The WebRTC Comms layer", function () {
         outgoingShuffleState = createSucceedingOutgoingShuffleState();
         incomingShuffleState = createSucceedingIncomingShuffleState();
         loggingService = ClientMocks.mockLoggingService();
+        metadataProviders = {something : function() {return ""}};
 
         destinationNodePointer = createCacheEntry("destinationNodePointer", 12);
         shuffleSet = [createCacheEntry("a", 456), createCacheEntry("b", 123), createCacheEntry("c", 222)];
@@ -56,11 +58,11 @@ describe("The WebRTC Comms layer", function () {
     describe("when initializing", function () {
 
         beforeEach(function() {
-            comms.initialize(localCyclonNode);
+            comms.initialize(localCyclonNode, metadataProviders);
         });
 
         it("should initialize the RTC layer", function () {
-            expect(rtc.connect).toHaveBeenCalledWith(localCyclonNode);
+            expect(rtc.connect).toHaveBeenCalledWith(metadataProviders);
         });
 
         it("should add a listener for incoming shuffle channels", function() {
@@ -178,7 +180,7 @@ describe("The WebRTC Comms layer", function () {
     describe("when handling an incoming shuffle", function () {
 
         beforeEach(function() {
-            comms.initialize(localCyclonNode);
+            comms.initialize(localCyclonNode, metadataProviders);
         });
 
         describe("before processing the shuffle request", function () {
