@@ -4,14 +4,6 @@ module.exports.mockLoggingService = function () {
     return jasmine.createSpyObj('loggingService', ['error', 'debug', 'info', 'warn']);
 };
 
-module.exports.mockMessagingUtilities = function () {
-    return jasmine.createSpyObj('messagingUtilities', ['waitForChannelMessage']);
-};
-
-module.exports.mockSignallingService = function () {
-    return jasmine.createSpyObj('signallingService', ['connect', 'getSignallingInfo', 'sendOffer', 'sendAnswer', 'on', 'removeListener']);
-};
-
 module.exports.mockCyclonNode = function () {
     return jasmine.createSpyObj('cyclonNode', ['getId', 'start', 'executeShuffle', 'createNewPointer', 'handleShuffleRequest', 'handleShuffleResponse', 'emit']);
 };
@@ -28,28 +20,12 @@ module.exports.mockAsyncExecService = function () {
     return jasmine.createSpyObj('asyncExecService', ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval']);
 };
 
-module.exports.mockPeerConnection = function (name) {
-    return jasmine.createSpyObj(name || 'peerConnection', ['createOffer', 'createAnswer', 'waitForChannelEstablishment', 'waitForChannelToOpen', 'handleAnswer', 'close', 'waitForIceCandidates', 'cancel']);
-};
-
-module.exports.mockTimingService = function () {
-    return jasmine.createSpyObj('timingService', ['getCurrentTimeInMilliseconds']);
-};
-
-module.exports.mockRtcObjectFactory = function () {
-    return jasmine.createSpyObj('rtcObjectFactory', ['createRTCSessionDescription', 'createRTCIceCandidate']);
-};
-
 module.exports.mockSignallingSocket = function () {
     return jasmine.createSpyObj('signallingSocket', ['getCurrentServerSpecs', 'initialize', 'on']);
 };
 
 module.exports.mockHttpRequestService = function () {
     return jasmine.createSpyObj('httpRequestService', ['get', 'post']);
-};
-
-module.exports.mockPeerConnectionFactory = function () {
-    return jasmine.createSpyObj('peerConnectionFactory', ['createPeerConnection']);
 };
 
 module.exports.mockShuffleStateFactory = function () {
@@ -74,17 +50,6 @@ module.exports.mockComms = function () {
 
 module.exports.mockStorage = function() {
     return jasmine.createSpyObj('storage', ['getItem', 'setItem']);
-};
-
-//
-// WebRTC API mocks
-//
-module.exports.mockRtcDataChannel = function (name) {
-    return jasmine.createSpyObj(name || 'rtcDataChannel', ['send', 'close']);
-};
-
-module.exports.mockRtcPeerConnection = function () {
-    return jasmine.createSpyObj('rtcPeerConnection', ['createDataChannel', 'createOffer', 'setLocalDescription', 'setRemoteDescription', 'createAnswer', 'addIceCandidate', 'close']);
 };
 
 //
