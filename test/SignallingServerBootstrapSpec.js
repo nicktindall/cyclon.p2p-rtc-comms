@@ -82,6 +82,30 @@ describe("The signalling server bootstrap", function () {
             });
         });
 
+        it("restricts the number of peers returned to that requested", function () {
+
+            serverOneResponse = Promise.resolve({
+                NODE_ID: {id: NODE_ID},
+                NODE_ID_ONE: {id: "NODE_ID_ONE"}
+            });
+            serverTwoResponse = Promise.resolve({
+                NODE_ID: {id: NODE_ID},
+                NODE_ID_TWO: {id: "NODE_ID_TWO"}
+            });
+
+            runs(function () {
+                bootstrap.getInitialPeerSet(cyclonNode, 1).then(successCallback).catch(failureCallback);
+            });
+
+            waits(10);
+
+            runs(function () {
+                expect(successCallback).toHaveBeenCalled();
+                expect(successCallback.mostRecentCall.args[0].length).toBe(1);
+                expect(failureCallback).not.toHaveBeenCalled();
+            });
+        });
+
         it("returns an empty array when no results are returned", function () {
 
             serverOneResponse = Promise.reject(new Error("dumb"));
