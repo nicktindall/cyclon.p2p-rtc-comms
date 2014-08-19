@@ -13,11 +13,6 @@ describe("The Outgoing ShuffleState", function () {
     };
     var RESPONSE_PAYLOAD = "RESPONSE_PAYLOAD";
     var LOCAL_SESSION_DESCRIPTION = "LOCAL_SESSION_DESCRIPTION";
-    var LOCAL_ICE_CANDIDATES = ["a", "b", "c"];
-    var LOCAL_PARAMETERS = {
-        sessionDescription: LOCAL_SESSION_DESCRIPTION,
-        iceCandidates: LOCAL_ICE_CANDIDATES
-    };
 
     var localCyclonNode,
         asyncExecService,
@@ -40,7 +35,7 @@ describe("The Outgoing ShuffleState", function () {
         //
         // Mock behaviours
         //
-        asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
+        asyncExecService.setTimeout.and.returnValue(TIMEOUT_ID);
 
         outgoingShuffleState = new OutgoingShuffleState(localCyclonNode, DESTINATION_NODE_POINTER, SHUFFLE_SET, asyncExecService, loggingService);
     });
@@ -54,42 +49,27 @@ describe("The Outgoing ShuffleState", function () {
         describe("when sending a shuffle request", function () {
 
             describe("and everything succeeds", function () {
-                beforeEach(function () {
-                    runs(function () {
-                        asyncExecService.setTimeout.andCallFake(function (callback) {
-                            callback();
-                        });
-                        outgoingShuffleState.sendShuffleRequest().then(successCallback).catch(failureCallback);
+                beforeEach(function (done) {
+                    asyncExecService.setTimeout.and.callFake(function (callback) {
+                        callback();
                     });
-
-                    waits(10);
+                    outgoingShuffleState.sendShuffleRequest().then(done);
                 });
 
                 it("should set a timeout to send the message over the data channel", function () {
                     expect(channel.send).toHaveBeenCalledWith("shuffleRequest", SHUFFLE_SET);
                 });
-
-                it("should resolve", function () {
-                    expect(failureCallback).not.toHaveBeenCalled();
-                    expect(successCallback).toHaveBeenCalled();
-                });
             });
 
             describe("and cancel is called before the request is sent", function () {
-                beforeEach(function () {
-                    runs(function () {
-                        outgoingShuffleState.sendShuffleRequest().then(successCallback).catch(failureCallback).cancel();
-                    });
-                    waits(100);
+                beforeEach(function (done) {
+                    outgoingShuffleState.sendShuffleRequest()
+                        .catch(Promise.CancellationError, done)
+                        .cancel();
                 });
 
                 it("clears the send request timeout", function () {
                     expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
-                });
-
-                it("rejects with a cancellation error", function () {
-                    expect(failureCallback).toHaveBeenCalledWith(jasmine.any(Promise.CancellationError));
-                    expect(successCallback).not.toHaveBeenCalled();
                 });
             });
         });
@@ -98,46 +78,26 @@ describe("The Outgoing ShuffleState", function () {
 
             describe("and a response is not received before the timeout", function () {
 
-                var timeoutError;
-
-                beforeEach(function () {
-                    runs(function () {
-                        timeoutError = new Promise.TimeoutError();
-                        channel.receive.andReturn(Promise.reject(timeoutError));
-                        outgoingShuffleState.processShuffleResponse().then(successCallback).catch(failureCallback);
-                    });
-
-                    waits(10);
+                beforeEach(function (done) {
+                    channel.receive.and.returnValue(Promise.reject(new Promise.TimeoutError()));
+                    outgoingShuffleState.processShuffleResponse()
+                        .catch(Promise.TimeoutError, done);
                 });
 
                 it("should not attempt to handle a response", function () {
                     expect(localCyclonNode.handleShuffleResponse).not.toHaveBeenCalled();
                 });
-
-                it("should call reject with the error", function () {
-                    expect(successCallback).not.toHaveBeenCalled();
-                    expect(failureCallback).toHaveBeenCalledWith(timeoutError);
-                });
             });
 
             describe("and a response is received before timeout", function () {
 
-                beforeEach(function () {
-                    runs(function () {
-                        channel.receive.andReturn(Promise.resolve(RESPONSE_PAYLOAD));
-                        outgoingShuffleState.processShuffleResponse().then(successCallback).catch(failureCallback);
-                    });
-
-                    waits(10);
+                beforeEach(function (done) {
+                    channel.receive.and.returnValue(Promise.resolve(RESPONSE_PAYLOAD));
+                    outgoingShuffleState.processShuffleResponse().then(done);
                 });
 
                 it("should delegate to the local node to handle the response", function () {
                     expect(localCyclonNode.handleShuffleResponse).toHaveBeenCalledWith(DESTINATION_NODE_POINTER, RESPONSE_PAYLOAD);
-                });
-
-                it("should resolve with the channel", function () {
-                    expect(successCallback).toHaveBeenCalled();
-                    expect(failureCallback).not.toHaveBeenCalled();
                 });
             });
         });
@@ -145,43 +105,27 @@ describe("The Outgoing ShuffleState", function () {
         describe("when sending a response acknowledgement", function () {
 
             describe("and everything succeeds", function () {
-                beforeEach(function () {
-                    runs(function () {
-                        asyncExecService.setTimeout.andCallFake(function(callback) {
-                            callback();
-                        });
-                        outgoingShuffleState.sendResponseAcknowledgement().then(successCallback).catch(failureCallback);
+                beforeEach(function (done) {
+                    asyncExecService.setTimeout.and.callFake(function(callback) {
+                        callback();
                     });
-
-                    waits(10);
+                    outgoingShuffleState.sendResponseAcknowledgement().then(done);
                 });
 
                 it("sends the acknowledgement over the channel", function () {
                     expect(channel.send).toHaveBeenCalledWith("shuffleResponseAcknowledgement");
                 });
-
-                it("resolves after a delay", function() {
-                    expect(successCallback).toHaveBeenCalled();
-                    expect(failureCallback).not.toHaveBeenCalled();
-                });
             });
 
             describe("and cancel is called before the resolve happens", function() {
-                beforeEach(function() {
-                    runs(function() {
-                        outgoingShuffleState.sendResponseAcknowledgement().then(successCallback).catch(failureCallback).cancel();
-                    });
-
-                    waits(100);
+                beforeEach(function(done) {
+                    outgoingShuffleState.sendResponseAcknowledgement()
+                        .catch(Promise.CancellationError, done)
+                        .cancel();
                 });
 
                 it("clears the resolve timeout", function() {
                     expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
-                });
-
-                it("rejects with a cancellation error", function() {
-                    expect(failureCallback).toHaveBeenCalledWith(jasmine.any(Promise.CancellationError));
-                    expect(successCallback).not.toHaveBeenCalled();
                 });
             });
         });
@@ -192,23 +136,13 @@ describe("The Outgoing ShuffleState", function () {
             var channelClosingTimeoutId = "channelClosingTimeoutId";
 
             beforeEach(function() {
-                runs(function() {
-                    asyncExecService.setTimeout.andReturn(sendingRequestTimeoutId);
-                    outgoingShuffleState.sendShuffleRequest().then(successCallback).then(failureCallback);
-                });
+                asyncExecService.setTimeout.and.returnValue(sendingRequestTimeoutId);
+                outgoingShuffleState.sendShuffleRequest();
 
-                waits(10);
+                asyncExecService.setTimeout.and.returnValue(channelClosingTimeoutId);
+                outgoingShuffleState.sendResponseAcknowledgement();
 
-                runs(function() {
-                    asyncExecService.setTimeout.andReturn(channelClosingTimeoutId);
-                    outgoingShuffleState.sendResponseAcknowledgement().then(successCallback).then(failureCallback);
-                });
-
-                waits(10);
-
-                runs(function() {
-                    outgoingShuffleState.close();
-                });
+                outgoingShuffleState.close();
             });
 
             it("clears the sending request timeout", function() {
@@ -226,13 +160,13 @@ describe("The Outgoing ShuffleState", function () {
 
             beforeEach(function() {
                 lastOutstandingPromise = ClientMocks.mockPromise();
-                channel.receive.andReturn(lastOutstandingPromise);
+                channel.receive.and.returnValue(lastOutstandingPromise);
                 outgoingShuffleState.processShuffleResponse();
             });
 
             describe("and the last outstanding promise is pending", function() {
                 beforeEach(function() {
-                    lastOutstandingPromise.isPending.andReturn(true);
+                    lastOutstandingPromise.isPending.and.returnValue(true);
                     outgoingShuffleState.cancel();
                 });
 
@@ -243,7 +177,7 @@ describe("The Outgoing ShuffleState", function () {
 
             describe("and the last outstanding promise is not pending", function() {
                 beforeEach(function() {
-                    lastOutstandingPromise.isPending.andReturn(false);
+                    lastOutstandingPromise.isPending.and.returnValue(false);
                     outgoingShuffleState.cancel();
                 });
 

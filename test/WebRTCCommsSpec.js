@@ -47,10 +47,10 @@ describe("The WebRTC Comms layer", function () {
         //
         // Mock behaviour
         //
-        rtc.openChannel.andReturn(Promise.resolve(WAIT_FOR_CHANNEL_TO_OPEN_RESULT));
-        channel.getRemotePeer.andReturn(destinationNodePointer);
-        shuffleStateFactory.createOutgoingShuffleState.andReturn(outgoingShuffleState);
-        shuffleStateFactory.createIncomingShuffleState.andReturn(incomingShuffleState);
+        rtc.openChannel.and.returnValue(Promise.resolve(WAIT_FOR_CHANNEL_TO_OPEN_RESULT));
+        channel.getRemotePeer.and.returnValue(destinationNodePointer);
+        shuffleStateFactory.createOutgoingShuffleState.and.returnValue(outgoingShuffleState);
+        shuffleStateFactory.createIncomingShuffleState.and.returnValue(incomingShuffleState);
 
         comms = new WebRTCComms(rtc, shuffleStateFactory, loggingService);
     });
@@ -84,96 +84,77 @@ describe("The WebRTC Comms layer", function () {
     describe("when sending a shuffle request", function () {
 
         describe("and everything succeeds", function () {
-            beforeEach(function () {
-                runs(function () {
-                    comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
-                        .then(successCallback).catch(failureCallback);
-                });
-
-                waits(10);
-            });
-
-            it("should perform the peer exchange then cleanup resources when the offer is created successfully", function () {
-
-                // The exchange occurred
-                expect(rtc.openChannel).toHaveBeenCalledWith("cyclonShuffle", destinationNodePointer);
-                expect(outgoingShuffleState.sendShuffleRequest).toHaveBeenCalledWith(WAIT_FOR_CHANNEL_TO_OPEN_RESULT);
-                expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith(SEND_SHUFFLE_REQUEST_RESULT);
-                expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith(PROCESS_SHUFFLE_RESPONSE_RESULT);
-                expect(successCallback).toHaveBeenCalledWith(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT);
-
-                // Clean up occurred
-                expect(outgoingShuffleState.close).toHaveBeenCalled();
-
-                // Failure didn't occur
-                expect(failureCallback).not.toHaveBeenCalled();
-            });
-        });
-
-        it("should not send the request when the channel does not open successfully", function () {
-
-            runs(function () {
-                rtc.openChannel.andReturn(Promise.reject(new Error("bad")));
+            it("should perform the peer exchange then cleanup resources when the offer is created successfully", function (done) {
                 comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
-                    .then(successCallback).catch(failureCallback);
-            });
+                    .then(function(result) {
+                        expect(result).toBe(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT);
 
-            waits(10);
+                        // The exchange occurred
+                        expect(rtc.openChannel).toHaveBeenCalledWith("cyclonShuffle", destinationNodePointer);
+                        expect(outgoingShuffleState.sendShuffleRequest).toHaveBeenCalledWith(WAIT_FOR_CHANNEL_TO_OPEN_RESULT);
+                        expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith(SEND_SHUFFLE_REQUEST_RESULT);
+                        expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith(PROCESS_SHUFFLE_RESPONSE_RESULT);
 
-            runs(function () {
-                expect(outgoingShuffleState.sendShuffleRequest).not.toHaveBeenCalled();
+                        // Clean up occurred
+                        expect(outgoingShuffleState.close).toHaveBeenCalled();
 
-                // Clean up occurred
-                expect(outgoingShuffleState.close).toHaveBeenCalled();
-
-                // Failure occurred
-                expect(failureCallback).toHaveBeenCalled();
+                        done();
+                    });
             });
         });
 
-        it("should cause the resources from the previous shuffle to be cleaned up when the next one starts and it has not completed successfully", function () {
+        it("should not send the request when the channel does not open successfully", function (done) {
+
+            rtc.openChannel.and.returnValue(Promise.reject(new Error("bad")));
+            comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
+                .catch(function() {
+                    expect(outgoingShuffleState.sendShuffleRequest).not.toHaveBeenCalled();
+                    // Clean up occurred
+                    expect(outgoingShuffleState.close).toHaveBeenCalled();
+                    done();
+                });
+        });
+
+        it("should cause the resources from the previous shuffle to be cleaned up when the next one starts and it has not completed successfully", function (done) {
 
             var firstOutgoingState = createSucceedingOutgoingShuffleState("firstOutgoingState");
             var secondOutgoingState = createSucceedingOutgoingShuffleState("secondOutgoingState");
             var secondFailureCallback = jasmine.createSpy('secondFailureCallback');
 
-            runs(function () {
-                var waitForChannelToOpenPromise = new Promise(function () {
-                }).cancellable();
-                rtc.openChannel.andReturn(waitForChannelToOpenPromise);   // it gets held up at waiting for the channel to open
-                firstOutgoingState.cancel.andCallFake(function () {
-                    waitForChannelToOpenPromise.cancel();
-                });
+            // Start the first shuffle (it gets stuck at waiting for the channel to open)
+            var firstWaitForChannelToOpenPromise = new Promise(function () {
+            }).cancellable();
 
-                shuffleStateFactory.createOutgoingShuffleState.andReturn(firstOutgoingState);
-                comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
-                    .then(successCallback).catch(failureCallback);
+            rtc.openChannel.and.returnValue(firstWaitForChannelToOpenPromise);   // it gets held up at waiting for the channel to open
+            firstOutgoingState.cancel.and.callFake(function () {
+                firstWaitForChannelToOpenPromise.cancel();
             });
 
-            waits(100);
+            shuffleStateFactory.createOutgoingShuffleState.and.returnValue(firstOutgoingState);
+            comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
+                .catch(Promise.CancellationError, function() {
+                    expect(firstOutgoingState.sendShuffleRequest).not.toHaveBeenCalled();
+                    expect(firstOutgoingState.cancel).toHaveBeenCalled();
+                    expect(firstOutgoingState.close).toHaveBeenCalled();
 
-            runs(function () {
-                var waitForChannelToOpenPromise = new Promise(function () {
-                }).cancellable();
-                rtc.openChannel.andReturn(waitForChannelToOpenPromise);   // it gets held up at waiting for the channel to open
-                secondOutgoingState.cancel.andCallFake(function () {
-                    waitForChannelToOpenPromise.cancel();
+                    setTimeout(function() {
+                        expect(secondFailureCallback).not.toHaveBeenCalled();
+                        done();
+                    }, 100);
                 });
-                shuffleStateFactory.createOutgoingShuffleState.andReturn(secondOutgoingState);
+
+            setTimeout(function() {
+                // Start the second shuffle (also gets stuck waiting for the channel to open)
+                var secondWaitForChannelToOpenPromise = new Promise(function () {
+                }).cancellable();
+                rtc.openChannel.and.returnValue(secondWaitForChannelToOpenPromise);   // it gets held up at waiting for the channel to open
+                secondOutgoingState.cancel.and.callFake(function () {
+                    secondWaitForChannelToOpenPromise.cancel();
+                });
+                shuffleStateFactory.createOutgoingShuffleState.and.returnValue(secondOutgoingState);
                 comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
                     .catch(secondFailureCallback);
-            });
-
-            waits(100);
-
-            runs(function () {
-                expect(firstOutgoingState.sendShuffleRequest).not.toHaveBeenCalled();
-                expect(firstOutgoingState.cancel).toHaveBeenCalled();
-                expect(firstOutgoingState.close).toHaveBeenCalled();
-
-                expect(failureCallback).toHaveBeenCalledWith(jasmine.any(Promise.CancellationError));
-                expect(secondFailureCallback).not.toHaveBeenCalled();
-            });
+            }, 10);
         });
     });
 
@@ -195,52 +176,41 @@ describe("The WebRTC Comms layer", function () {
 
         describe("and everything succeeds", function () {
 
-            beforeEach(function () {
-                runs(function () {
-                    comms.handleIncomingShuffle(channel).then(successCallback).catch(failureCallback);
-                });
+            var incomingShufflePromise;
 
-                waits(10);
+            beforeEach(function () {
+                incomingShufflePromise = comms.handleIncomingShuffle(channel);
             });
 
-            it("should perform the exchange with the source peer then clean up when an answer is created successfully", function () {
+            it("should perform the exchange with the source peer then clean up when an answer is created successfully", function (done) {
 
-                runs(function () {
+                incomingShufflePromise.then(function () {
                     expect(incomingShuffleState.processShuffleRequest).toHaveBeenCalledWith(channel);
                     expect(incomingShuffleState.waitForResponseAcknowledgement).toHaveBeenCalledWith(PROCESS_SHUFFLE_REQUEST_RESULT);
 
                     // and cleanup
                     expect(incomingShuffleState.close).toHaveBeenCalled();
-
-                    // Success!
-                    expect(successCallback).toHaveBeenCalled();
-                    expect(failureCallback).not.toHaveBeenCalled();
+                    done();
                 });
             });
         });
 
         describe("and a timeout occurs waiting for the shuffle request", function () {
 
-            beforeEach(function () {
-                runs(function () {
-                    incomingShuffleState.processShuffleRequest.andReturn(Promise.reject(new Promise.TimeoutError()));
-                    comms.handleIncomingShuffle(channel).then(successCallback).catch(failureCallback);
-                });
+            var incomingShufflePromise;
 
-                waits(10);
+            beforeEach(function () {
+                incomingShuffleState.processShuffleRequest.and.returnValue(Promise.reject(new Promise.TimeoutError()));
+                incomingShufflePromise = comms.handleIncomingShuffle(channel);
             });
 
-            it("should clean up it state and not wait for the acknowledgement", function () {
-
-                runs(function () {
+            it("should clean up it state and not wait for the acknowledgement", function (done) {
+                incomingShufflePromise.then(function() {
                     expect(incomingShuffleState.waitForResponseAcknowledgement).not.toHaveBeenCalled();
 
                     // Close should still be called
                     expect(incomingShuffleState.close).toHaveBeenCalled();
-
-                    // The error should be handled
-                    expect(failureCallback).not.toHaveBeenCalled();
-                    expect(successCallback).toHaveBeenCalled();
+                    done();
                 });
             });
         });
@@ -248,16 +218,16 @@ describe("The WebRTC Comms layer", function () {
 
     function createSucceedingOutgoingShuffleState(name) {
         var outgoingShuffleState = ClientMocks.mockOutgoingShuffleState(name);
-        outgoingShuffleState.sendShuffleRequest.andReturn(Promise.resolve(SEND_SHUFFLE_REQUEST_RESULT));
-        outgoingShuffleState.processShuffleResponse.andReturn(Promise.resolve(PROCESS_SHUFFLE_RESPONSE_RESULT));
-        outgoingShuffleState.sendResponseAcknowledgement.andReturn(Promise.resolve(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT));
+        outgoingShuffleState.sendShuffleRequest.and.returnValue(Promise.resolve(SEND_SHUFFLE_REQUEST_RESULT));
+        outgoingShuffleState.processShuffleResponse.and.returnValue(Promise.resolve(PROCESS_SHUFFLE_RESPONSE_RESULT));
+        outgoingShuffleState.sendResponseAcknowledgement.and.returnValue(Promise.resolve(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT));
         return outgoingShuffleState;
     }
 
     function createSucceedingIncomingShuffleState() {
         var incomingShuffleState = ClientMocks.mockIncomingShuffleState();
-        incomingShuffleState.processShuffleRequest.andReturn(Promise.resolve(PROCESS_SHUFFLE_REQUEST_RESULT));
-        incomingShuffleState.waitForResponseAcknowledgement.andReturn(Promise.resolve(WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT));
+        incomingShuffleState.processShuffleRequest.and.returnValue(Promise.resolve(PROCESS_SHUFFLE_REQUEST_RESULT));
+        incomingShuffleState.waitForResponseAcknowledgement.and.returnValue(Promise.resolve(WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT));
         return incomingShuffleState;
     }
 

@@ -39,9 +39,9 @@ describe("The signalling server bootstrap", function () {
         //
         // Mock behaviour
         //
-        signallingSocket.getCurrentServerSpecs.andReturn(SIGNALLING_SERVERS);
-        cyclonNode.getId.andReturn(NODE_ID);
-        httpRequestService.get.andCallFake(function (url) {
+        signallingSocket.getCurrentServerSpecs.and.returnValue(SIGNALLING_SERVERS);
+        cyclonNode.getId.and.returnValue(NODE_ID);
+        httpRequestService.get.and.callFake(function (url) {
             if (url.indexOf("http://one/api/peers") === 0) {
                 return serverOneResponse;
             }
@@ -56,7 +56,7 @@ describe("The signalling server bootstrap", function () {
 
     describe("when fetching initial peer sets", function () {
 
-        it("returns combined results from all servers that respond", function () {
+        it("returns combined results from all servers that respond", function (done) {
 
             serverOneResponse = Promise.resolve({
                 NODE_ID: {id: NODE_ID},
@@ -67,22 +67,16 @@ describe("The signalling server bootstrap", function () {
                 NODE_ID_TWO: {id: "NODE_ID_TWO"}
             });
 
-            runs(function () {
-                bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(successCallback).catch(failureCallback);
-            });
-
-            waits(10);
-
-            runs(function () {
-                expect(successCallback).toHaveBeenCalledWith([
+            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(function(result) {
+                expect(result).toEqual([
                     {id: "NODE_ID_ONE"},
                     {id: "NODE_ID_TWO"}
                 ]);
-                expect(failureCallback).not.toHaveBeenCalled();
+                done();
             });
         });
 
-        it("restricts the number of peers returned to that requested", function () {
+        it("restricts the number of peers returned to that requested", function (done) {
 
             serverOneResponse = Promise.resolve({
                 NODE_ID: {id: NODE_ID},
@@ -93,33 +87,20 @@ describe("The signalling server bootstrap", function () {
                 NODE_ID_TWO: {id: "NODE_ID_TWO"}
             });
 
-            runs(function () {
-                bootstrap.getInitialPeerSet(cyclonNode, 1).then(successCallback).catch(failureCallback);
-            });
-
-            waits(10);
-
-            runs(function () {
-                expect(successCallback).toHaveBeenCalled();
-                expect(successCallback.mostRecentCall.args[0].length).toBe(1);
-                expect(failureCallback).not.toHaveBeenCalled();
+            bootstrap.getInitialPeerSet(cyclonNode, 1).then(function(result) {
+                expect(result.length).toBe(1);
+                done();
             });
         });
 
-        it("returns an empty array when no results are returned", function () {
+        it("returns an empty array when no results are returned", function (done) {
 
             serverOneResponse = Promise.reject(new Error("dumb"));
             serverTwoResponse = Promise.reject(new Error("dumber"));
 
-            runs(function () {
-                bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(successCallback).catch(failureCallback);
-            });
-
-            waits(10);
-
-            runs(function () {
-                expect(successCallback).toHaveBeenCalledWith([]);
-                expect(failureCallback).not.toHaveBeenCalled();
+            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(function(result) {
+                expect(result).toEqual([]);
+                done();
             });
         });
     });

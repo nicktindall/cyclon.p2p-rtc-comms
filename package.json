@@ -29,14 +29,14 @@
     "test": "make test"
   },
   "devDependencies": {
-    "istanbul": "0.2.x",
-    "jasmine-node": "1.14.2"
+    "istanbul": "0.3.x",
+    "jasmine-node": "2.0.x"
   },
   "dependencies": {
-    "bluebird": "2.1.x",
-    "cyclon.p2p": "0.1.4",
-    "cyclon.p2p-common": "0.0.2",
-    "cyclon.p2p-rtc-client": "0.1.9",
+    "bluebird": "2.3.x",
+    "cyclon.p2p": "0.1.5",
+    "cyclon.p2p-common": "0.0.3",
+    "cyclon.p2p-rtc-client": "0.1.10",
     "socket.io-client": "1.0.x"
   }
 }

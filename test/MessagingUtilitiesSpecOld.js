@@ -26,7 +26,7 @@ describe("The MessagingUtilities", function() {
         loggingService = ClientMocks.mockLoggingService();
         dataChannel = ClientMocks.mockRtcDataChannel();
 
-        asyncExecService.setTimeout.andReturn(TIMEOUT_ID);
+        asyncExecService.setTimeout.and.returnValue(TIMEOUT_ID);
 
         dataChannel.readyState = "open";
 
@@ -140,7 +140,7 @@ describe("The MessagingUtilities", function() {
     describe("when a timeout occurs waiting for a message", function() {
 
         beforeEach(function() {
-            asyncExecService.setTimeout.andCallFake(function(callback) {
+            asyncExecService.setTimeout.and.callFake(function(callback) {
                 callback();
             });
 
