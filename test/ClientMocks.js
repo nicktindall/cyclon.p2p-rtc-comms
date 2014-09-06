@@ -9,7 +9,7 @@ module.exports.mockCyclonNode = function () {
 };
 
 module.exports.mockRtc = function () {
-    return jasmine.createSpyObj('rtc', ['connect', 'onChannel', 'openChannel', 'on']);
+    return jasmine.createSpyObj('rtc', ['connect', 'onChannel', 'openChannel', 'on', 'createNewPointer', 'getLocalId']);
 };
 
 module.exports.mockChannel = function() {

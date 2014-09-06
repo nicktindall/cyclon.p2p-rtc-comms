@@ -3,6 +3,7 @@
 var Promise = require("bluebird");
 var WebRTCComms = require("../lib/WebRTCComms");
 var ClientMocks = require("./ClientMocks");
+var events = require("events");
 
 describe("The WebRTC Comms layer", function () {
 
@@ -11,7 +12,13 @@ describe("The WebRTC Comms layer", function () {
         PROCESS_SHUFFLE_RESPONSE_RESULT = "PROCESS_SHUFFLE_RESULT_RESULT",
         SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT = "SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT",
         PROCESS_SHUFFLE_REQUEST_RESULT = "PROCESS_SHUFFLE_REQUEST_RESULT",
-        WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT = "WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT";
+        WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT = "WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT",
+        CREATE_NEW_POINTER_RESULT = "CREATE_NEW+POINTER_RESULT",
+        LOCAL_ID = "LOCAL_ID";
+
+    var CYCLON_SHUFFLE_CHANNEL_TYPE = "cyclonShuffle";
+    var REMOTE_POINTER = "REMOTE_POINTER";
+    var INCOMING_ERROR = "INCOMING_ERROR";
 
     var comms,
         channel,
@@ -22,7 +29,7 @@ describe("The WebRTC Comms layer", function () {
         destinationNodePointer,
         shuffleSet,
         incomingShuffleState,
-        loggingService,
+        logger,
         successCallback,
         failureCallback,
         metadataProviders;
@@ -38,7 +45,7 @@ describe("The WebRTC Comms layer", function () {
         localCyclonNode = ClientMocks.mockCyclonNode();
         outgoingShuffleState = createSucceedingOutgoingShuffleState();
         incomingShuffleState = createSucceedingIncomingShuffleState();
-        loggingService = ClientMocks.mockLoggingService();
+        logger = ClientMocks.mockLoggingService();
         metadataProviders = {something : function() {return ""}};
 
         destinationNodePointer = createCacheEntry("destinationNodePointer", 12);
@@ -48,11 +55,13 @@ describe("The WebRTC Comms layer", function () {
         // Mock behaviour
         //
         rtc.openChannel.and.returnValue(Promise.resolve(WAIT_FOR_CHANNEL_TO_OPEN_RESULT));
+        rtc.createNewPointer.and.returnValue(CREATE_NEW_POINTER_RESULT);
+        rtc.getLocalId.and.returnValue(LOCAL_ID);
         channel.getRemotePeer.and.returnValue(destinationNodePointer);
         shuffleStateFactory.createOutgoingShuffleState.and.returnValue(outgoingShuffleState);
         shuffleStateFactory.createIncomingShuffleState.and.returnValue(incomingShuffleState);
 
-        comms = new WebRTCComms(rtc, shuffleStateFactory, loggingService);
+        comms = new WebRTCComms(rtc, shuffleStateFactory, logger);
     });
 
     describe("when initializing", function () {
@@ -67,6 +76,56 @@ describe("The WebRTC Comms layer", function () {
 
         it("should add a listener for incoming shuffle channels", function() {
             expect(rtc.onChannel).toHaveBeenCalledWith("cyclonShuffle", comms.handleIncomingShuffle);
+        });
+    });
+
+    describe("when cyclon shuffle errors occur on the RTC service", function() {
+
+        beforeEach(function() {
+            rtc = new events.EventEmitter();
+            rtc.onChannel = jasmine.createSpy();
+            rtc.connect = jasmine.createSpy();
+            comms = new WebRTCComms(rtc, shuffleStateFactory, logger);
+            comms.initialize(localCyclonNode, metadataProviders);
+        });
+
+        describe("on incomingTimeout", function() {
+
+            it("emits an incoming shuffle timeout event for cyclon channels", function() {
+                rtc.emit("incomingTimeout", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER);
+                expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleTimeout", "incoming", REMOTE_POINTER);
+            });
+
+            it("emits no incoming shuffle timeout event for non-cyclon channels", function() {
+                rtc.emit("incomingTimeout", "otherChannelType", REMOTE_POINTER);
+                expect(localCyclonNode.emit).not.toHaveBeenCalled();
+            });
+        });
+
+        describe("on incomingError", function() {
+
+            it("emits an incoming shuffleError event for cyclon channels", function() {
+                rtc.emit("incomingError", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER, INCOMING_ERROR);
+                expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleError", "incoming", REMOTE_POINTER, INCOMING_ERROR);
+            });
+
+            it("emits no incoming shuffleError event for non-cyclon channels", function() {
+                rtc.emit("incomingError", "otherChannelType", REMOTE_POINTER, INCOMING_ERROR);
+                expect(localCyclonNode.emit).not.toHaveBeenCalled();
+            });
+        });
+
+        describe("on offerReceived", function() {
+
+            it("emits an incoming shuffleStarted event for cyclon channels", function() {
+                rtc.emit("offerReceived", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER);
+                expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleStarted", "incoming", REMOTE_POINTER);
+            });
+
+            it("emits no incoming shuffleStarted event for non-cyclon channels", function() {
+                rtc.emit("offerReceived", "otherChannelType", REMOTE_POINTER);
+                expect(localCyclonNode.emit).not.toHaveBeenCalled();
+            });
         });
     });
 
@@ -155,6 +214,20 @@ describe("The WebRTC Comms layer", function () {
                 comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
                     .catch(secondFailureCallback);
             }, 10);
+        });
+    });
+
+    describe("when creating a new pointer", function() {
+
+        it("delegates to the RTC service", function() {
+            expect(comms.createNewPointer()).toBe(CREATE_NEW_POINTER_RESULT);
+        });
+    });
+
+    describe("when getting the local ID", function() {
+
+        it("delegates to the RTC service", function() {
+            expect(comms.getLocalId()).toBe(LOCAL_ID);
         });
     });
 
