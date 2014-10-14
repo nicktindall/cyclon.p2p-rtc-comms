@@ -6,9 +6,7 @@ cyclon.p2p-rtc-comms
 
 A WebRTC implementation of the [cyclon.p2p](https://github.com/nicktindall/cyclon.p2p) `Comms` and `Bootstrap` interfaces.
 
-This project implements the cyclon.p2p `Comms` and `Bootstrap` interfaces using [cyclon.p2p-rtc-client](https://github.com/nicktindall/cyclon.p2p-rtc-client).
-
-For more information about the `Comms` and `Bootstrap` interfaces, see [cyclon.p2p](https://github.com/nicktindall/cyclon.p2p).
+This project implements the cyclon.p2p `Comms` and `Bootstrap` interfaces using [cyclon.p2p-rtc-client](https://github.com/nicktindall/cyclon.p2p-rtc-client). For more information about the `Comms` and `Bootstrap` interfaces, see [cyclon.p2p](https://github.com/nicktindall/cyclon.p2p).
 
 How to use
 ----------
