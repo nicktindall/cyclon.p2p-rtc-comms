@@ -132,7 +132,8 @@ describe("The WebRTC Comms layer", function () {
     describe("before sending a shuffle request", function () {
 
         beforeEach(function () {
-            comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet);
+            comms.initialize(localCyclonNode, metadataProviders);
+            comms.sendShuffleRequest(destinationNodePointer, shuffleSet);
         });
 
         it("should create a new outgoing shuffle state", function () {
@@ -142,9 +143,13 @@ describe("The WebRTC Comms layer", function () {
 
     describe("when sending a shuffle request", function () {
 
+        beforeEach(function() {
+            comms.initialize(localCyclonNode, metadataProviders);
+        });
+
         describe("and everything succeeds", function () {
             it("should perform the peer exchange then cleanup resources when the offer is created successfully", function (done) {
-                comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
+                comms.sendShuffleRequest(destinationNodePointer, shuffleSet)
                     .then(function(result) {
                         expect(result).toBe(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT);
 
