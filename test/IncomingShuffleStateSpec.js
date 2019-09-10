@@ -75,20 +75,6 @@ describe("The Incoming ShuffleState", function () {
             });
         });
 
-        describe("and cancel is called before the response is sent", function() {
-
-            beforeEach(function(done) {
-                asyncExecService.setTimeout.and.returnValue(TIMEOUT_ID);
-                channel.receive.and.returnValue(Promise.resolve({payload: REQUEST_PAYLOAD}));
-                incomingShuffleState.processShuffleRequest(channel)
-                    .catch(Promise.CancellationError, done).cancel();
-            });
-
-            it("cancels the response sending", function() {
-                expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
-            });
-        });
-
         describe("and cancel is called before the request arrives", function() {
 
             var cancellationError;
@@ -141,25 +127,6 @@ describe("The Incoming ShuffleState", function () {
                 incomingShuffleState.waitForResponseAcknowledgement(channel)
                     .catch(Promise.CancellationError, done);
             });
-        });
-    });
-
-    describe("when closing", function() {
-
-        beforeEach(function(done) {
-            asyncExecService.setTimeout.and.returnValue(TIMEOUT_ID);
-            channel.receive.and.returnValue(Promise.resolve({payload: REQUEST_PAYLOAD}));
-            incomingShuffleState.processShuffleRequest(channel)
-                .then(successCallback).catch(failureCallback);
-
-            setTimeout(function() {
-                incomingShuffleState.close();
-                done();
-            }, 10);
-        });
-
-        it("clears the response sending timeout", function() {
-            expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
         });
     });
 
