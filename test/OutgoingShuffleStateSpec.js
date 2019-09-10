@@ -60,6 +60,18 @@ describe("The Outgoing ShuffleState", function () {
                     expect(channel.send).toHaveBeenCalledWith("shuffleRequest", SHUFFLE_SET);
                 });
             });
+
+            describe("and cancel is called before the request is sent", function () {
+                beforeEach(function (done) {
+                    outgoingShuffleState.sendShuffleRequest()
+                        .catch(Promise.CancellationError, done)
+                        .cancel();
+                });
+
+                it("clears the send request timeout", function () {
+                    expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
+                });
+            });
         });
 
         describe("when processing a shuffle response", function () {
@@ -131,6 +143,10 @@ describe("The Outgoing ShuffleState", function () {
                 outgoingShuffleState.sendResponseAcknowledgement();
 
                 outgoingShuffleState.close();
+            });
+
+            it("clears the sending request timeout", function() {
+                expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(sendingRequestTimeoutId);
             });
 
             it("clears the channel closing timeout", function() {
