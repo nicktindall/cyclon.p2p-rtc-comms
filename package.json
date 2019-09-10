@@ -1,6 +1,6 @@
 {
   "name": "cyclon.p2p-rtc-comms",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "A WebRTC communications module for the cyclon.p2p framework",
   "keywords": [
     "webrtc",
@@ -36,6 +36,6 @@
     "bluebird": "2.3.x",
     "cyclon.p2p": "0.1.9",
     "cyclon.p2p-common": "0.0.6",
-    "cyclon.p2p-rtc-client": "0.1.25"
+    "cyclon.p2p-rtc-client": "0.1.26"
   }
 }
