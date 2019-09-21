@@ -34,8 +34,8 @@
   },
   "dependencies": {
     "bluebird": "2.3.x",
-    "cyclon.p2p": "0.1.9",
-    "cyclon.p2p-common": "0.0.6",
-    "cyclon.p2p-rtc-client": "0.1.26"
+    "cyclon.p2p": "^0.1.12",
+    "cyclon.p2p-common": "^0.1.1",
+    "cyclon.p2p-rtc-client": "^0.1.30"
   }
 }
