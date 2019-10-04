@@ -5,7 +5,7 @@ import {Channel} from 'cyclon.p2p-rtc-client/lib/Channel';
 
 const SHUFFLE_RESPONSE_TIMEOUT_MS: number = 30000;
 
-class OutgoingShuffleState {
+export class OutgoingShuffleState {
 
     private lastOutstandingPromise?: Promise<any>;
     private channelClosingTimeoutId?: number;
@@ -105,5 +105,3 @@ class OutgoingShuffleState {
         return this.channel;
     }
 }
-
-module.exports = OutgoingShuffleState;

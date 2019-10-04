@@ -1,7 +1,7 @@
 'use strict';
 
 const Promise = require("bluebird");
-const IncomingShuffleState = require("../lib/IncomingShuffleState.js");
+const {IncomingShuffleState} = require("../lib/IncomingShuffleState.js");
 const ClientMocks = require("./ClientMocks");
 
 describe("The Incoming ShuffleState", function () {
