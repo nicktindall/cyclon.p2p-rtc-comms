@@ -40,6 +40,6 @@
     "bluebird": "2.3.x",
     "cyclon.p2p": "^0.1.17",
     "cyclon.p2p-common": "^0.1.8",
-    "cyclon.p2p-rtc-client": "^0.1.33"
+    "cyclon.p2p-rtc-client": "^0.1.34"
   }
 }
