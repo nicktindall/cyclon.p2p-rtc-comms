@@ -33,7 +33,7 @@ module.exports.mockShuffleStateFactory = function () {
 };
 
 module.exports.mockOutgoingShuffleState = function (name) {
-    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendShuffleRequest', 'processShuffleResponse', 'sendResponseAcknowledgement', 'close', 'cancel']);
+    return jasmine.createSpyObj(name || 'outgoingShuffleState', ['sendShuffleRequest', 'processShuffleResponse', 'sendResponseAcknowledgement', 'storeChannel', 'close', 'cancel']);
 };
 
 module.exports.mockIncomingShuffleState = function () {

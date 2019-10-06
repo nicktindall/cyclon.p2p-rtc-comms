@@ -1,7 +1,7 @@
 'use strict';
 
 var Promise = require("bluebird");
-var WebRTCComms = require("../lib/WebRTCComms");
+var {WebRTCComms} = require("../lib/WebRTCComms");
 var ClientMocks = require("./ClientMocks");
 var events = require("events");
 
@@ -75,7 +75,7 @@ describe("The WebRTC Comms layer", function () {
         });
 
         it("should add a listener for incoming shuffle channels", function() {
-            expect(rtc.onChannel).toHaveBeenCalledWith("cyclonShuffle", comms.handleIncomingShuffle);
+            expect(rtc.onChannel).toHaveBeenCalledWith("cyclonShuffle", jasmine.any(Function));
         });
     });
 
@@ -155,9 +155,10 @@ describe("The WebRTC Comms layer", function () {
 
                         // The exchange occurred
                         expect(rtc.openChannel).toHaveBeenCalledWith("cyclonShuffle", destinationNodePointer);
-                        expect(outgoingShuffleState.sendShuffleRequest).toHaveBeenCalledWith(WAIT_FOR_CHANNEL_TO_OPEN_RESULT);
-                        expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith(SEND_SHUFFLE_REQUEST_RESULT);
-                        expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith(PROCESS_SHUFFLE_RESPONSE_RESULT);
+                        expect(outgoingShuffleState.storeChannel).toHaveBeenCalledWith(WAIT_FOR_CHANNEL_TO_OPEN_RESULT)
+                        expect(outgoingShuffleState.sendShuffleRequest).toHaveBeenCalledWith();
+                        expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith();
+                        expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith();
 
                         // Clean up occurred
                         expect(outgoingShuffleState.close).toHaveBeenCalled();
