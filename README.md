@@ -10,31 +10,20 @@ This project implements the cyclon.p2p `Comms` and `Bootstrap` interfaces using 
 
 How to use
 ----------
-First install `cyclon.p2p-rtc-client` and `cyclon.p2p-rtc-comms` as runtime dependencies using npm
+First install `cyclon.p2p-rtc-comms` and `cyclon.p2p` as runtime dependencies using npm
 
 ```
-npm install cyclon.p2p-rtc-client --save
 npm install cyclon.p2p-rtc-comms --save
+npm install cyclon.p2p --save
 ```
 
-If you are using browserify and AngularJS in your project you can include the 'cyclon-rtc' and 'cyclon-rtc-comms' modules simply:
+Create a Comms and Bootstrap instance using the builder provided, e.g.
 
 ```javascript
-var angular = require('angular');  // or wherever angular comes from
-var cyclon = require('cyclon.p2p');
-var cyclonRtc = require('cyclon.p2p-rtc-client');
-var cyclonRtcComms = require('cyclon.p2p-rtc-comms');
+const {commsAndBootstrapBuilder} = require('cyclon.p2p-rtc-comms');
+const {builder} = require('cyclon.p2p');
 
-// Create the 'cyclon-rtc' module
-cyclonRtc.createAngularModule(angular);
-// Create the 'cyclon-rtc-comms' module
-cyclonRtcComms.createAngularModule(angular);
-
-// Then any modules that depend on 'cyclon-rtc-comms' can use the 'Comms' and 'Bootstrap' services exposed
-var myModule = angular.module('myModule', ['cyclon-rtc-comms'])
-myModule.service('myService', ['RTC', 'Comms', 'Bootstrap', function(rtcClient, rtcComms, rtcBootstrap) {
-        var cyclonNode = cyclon.builder(rtcComms, rtcBootstrap);
-        cyclonNode.start();
-  }]);
-  
+const { comms, bootstrap } = commsAndBootstrapBuilder().build();
+const cyclonNode = builder(comms, bootstrap).build();
+cyclonNode.start();
 ```
