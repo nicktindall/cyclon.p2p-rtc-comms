@@ -1,6 +1,5 @@
 'use strict';
 
-var Promise = require("bluebird");
 var {SignallingServerBootstrap} = require("../lib/SignallingServerBootstrap");
 var ClientMocks = require("./ClientMocks");
 

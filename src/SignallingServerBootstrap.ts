@@ -1,12 +1,10 @@
-'use strict';
-
 import url from 'url';
-import {Promise} from 'bluebird';
 import {randomSample} from 'cyclon.p2p-common';
 import {SignallingSocket} from 'cyclon.p2p-rtc-client/lib/SignallingSocket';
 import {HttpRequestService} from 'cyclon.p2p-rtc-client';
 import {CyclonNode, CyclonNodePointer} from 'cyclon.p2p';
 import {SignallingServerSpec} from 'cyclon.p2p-rtc-client/lib/SignallingServerSpec';
+import {allSettled, SettledPromise} from './PromiseTools';
 
 const API_PATH = "./api/peers";
 
@@ -24,11 +22,11 @@ export class SignallingServerBootstrap {
         const serverSpecs = this.signallingSocket.getCurrentServerSpecs();
         if (serverSpecs.length > 0) {
 
-            const specPromises = serverSpecs.map((serverSpec) => {
+            const specPromises: Promise<CyclonNodePointer[]>[] = serverSpecs.map((serverSpec) => {
                 return this.getInitialPeerSetFromServer(cyclonNode, serverSpec, limit);
             });
 
-            return Promise.settle(specPromises).then((results) => {
+            return allSettled(specPromises).then((results) => {
                 const allResults = SignallingServerBootstrap.collateSuccessfulResults(results);
                 return randomSample(SignallingServerBootstrap.deDuplicatePeerList(allResults), limit);
             });
@@ -37,10 +35,11 @@ export class SignallingServerBootstrap {
         return Promise.reject(new Error("Not connected to any signalling servers, can't bootstrap"));
     }
 
-    private static collateSuccessfulResults(arrayOfPromises: Promise.Inspection<CyclonNodePointer[]>[]): CyclonNodePointer[] {
-        return arrayOfPromises.reduce((current: CyclonNodePointer[], next: Promise.Inspection<CyclonNodePointer[]>) => {
-            if (next.isFulfilled()) {
-                return current.concat(next.value());
+    private static collateSuccessfulResults(arrayOfPromises: SettledPromise<CyclonNodePointer[]>[]): CyclonNodePointer[] {
+        return arrayOfPromises.reduce((current: CyclonNodePointer[], next: SettledPromise<CyclonNodePointer[]>) => {
+            // @ts-ignore
+            if (next.status === 'fulfilled') {
+                return current.concat(next.value as CyclonNodePointer[]);
             }
             else {
                 return current;
@@ -69,13 +68,12 @@ export class SignallingServerBootstrap {
         return uniquePeers;
     }
 
-    private getInitialPeerSetFromServer(cyclonNode: CyclonNode, serverSpec: SignallingServerSpec, limit: number): Promise<CyclonNodePointer[]> {
-        return this.httpRequestService.get(SignallingServerBootstrap.generateUrl(serverSpec.signallingApiBase, limit)).then((response: {[id: string]: CyclonNodePointer}) => {
-            return Object.keys(response).filter((peerId) => {
-                return peerId !== cyclonNode.getId();
-            }).map((peerId) => {
-                return response[peerId];
-            });
+    private async getInitialPeerSetFromServer(cyclonNode: CyclonNode, serverSpec: SignallingServerSpec, limit: number): Promise<CyclonNodePointer[]> {
+        const response = await this.httpRequestService.get(SignallingServerBootstrap.generateUrl(serverSpec.signallingApiBase, limit));
+        return Object.keys(response).filter((peerId) => {
+            return peerId !== cyclonNode.getId();
+        }).map((peerId) => {
+            return response[peerId];
         });
     }
 

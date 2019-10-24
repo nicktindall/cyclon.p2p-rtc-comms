@@ -1,7 +1,6 @@
-import {Promise} from 'bluebird';
 import {CyclonNode, CyclonNodePointer, MetadataProvider} from 'cyclon.p2p';
 import {RTC, WebRTCCyclonNodePointer, Channel} from 'cyclon.p2p-rtc-client';
-import {Logger} from 'cyclon.p2p-common';
+import {Logger, TimeoutError} from 'cyclon.p2p-common';
 import {ShuffleStateFactory} from './ShuffleStateFactory';
 import {OutgoingShuffleState} from './OutgoingShuffleState';
 
@@ -53,35 +52,23 @@ export class WebRTCComms {
      * @param destinationNodePointer
      * @param shuffleSet
      */
-    sendShuffleRequest(destinationNodePointer: WebRTCCyclonNodePointer, shuffleSet: WebRTCCyclonNodePointer[]): Promise<void> {
-
-        if (this.currentOutgoingShuffle && this.currentOutgoingShuffle.isPending()) {
-            this.logger.warn(`Previous outgoing request timed out (to ${(this.lastShuffleNode as CyclonNodePointer).id})`);
-            this.currentOutgoingShuffle.cancel();
-        }
-
+    async sendShuffleRequest(destinationNodePointer: WebRTCCyclonNodePointer, shuffleSet: WebRTCCyclonNodePointer[]): Promise<void> {
         this.lastShuffleNode = destinationNodePointer;
-        this.currentOutgoingShuffle = this.createOutgoingShuffle(
+        return await this.createOutgoingShuffle(
             this.shuffleStateFactory.createOutgoingShuffleState(this.requireLocalNode(), destinationNodePointer, shuffleSet),
             destinationNodePointer);
-
-        return this.currentOutgoingShuffle as Promise<void>;
     }
 
-    private createOutgoingShuffle(outgoingState: OutgoingShuffleState, destinationNodePointer: WebRTCCyclonNodePointer): Promise<void> {
-        return this.rtc.openChannel(CYCLON_SHUFFLE_CHANNEL_TYPE, destinationNodePointer)
-            .then((channel) => outgoingState.storeChannel(channel))
-            .then(() => outgoingState.sendShuffleRequest())
-            .then(() => outgoingState.processShuffleResponse())
-            .then(() => outgoingState.sendResponseAcknowledgement())
-            .cancellable()
-            .catch(Promise.CancellationError, function (e) {
-                outgoingState.cancel();
-                throw e;
-            })
-            .finally(function() {
-                outgoingState.close();
-            });
+    private async createOutgoingShuffle(outgoingState: OutgoingShuffleState, destinationNodePointer: WebRTCCyclonNodePointer): Promise<void> {
+        try {
+            const channel = await this.rtc.openChannel(CYCLON_SHUFFLE_CHANNEL_TYPE, destinationNodePointer);
+            outgoingState.storeChannel(channel);
+            outgoingState.sendShuffleRequest();
+            await outgoingState.processShuffleResponse();
+            await outgoingState.sendResponseAcknowledgement();
+        } finally {
+            outgoingState.close();
+        }
     }
 
     createNewPointer(): CyclonNodePointer {
@@ -95,28 +82,26 @@ export class WebRTCComms {
     /**
      * Handle an incoming shuffle
      */
-    handleIncomingShuffle(channel: Channel): Promise<void> {
+    async handleIncomingShuffle(channel: Channel): Promise<void> {
         const remotePeer = channel.getRemotePeer();
 
         const incomingShuffleState = this.shuffleStateFactory.createIncomingShuffleState(this.requireLocalNode(), remotePeer);
 
-        return incomingShuffleState.processShuffleRequest(channel)
-            .then((channel) => incomingShuffleState.waitForResponseAcknowledgement(channel))
-            .then(() => {
-                this.requireLocalNode().emit("shuffleCompleted", "incoming", remotePeer);
-            })
-            .catch(Promise.TimeoutError, (e) => {
+        try {
+            await incomingShuffleState.processShuffleRequest(channel);
+            await incomingShuffleState.waitForResponseAcknowledgement(channel);
+            this.requireLocalNode().emit("shuffleCompleted", "incoming", remotePeer);
+        } catch (e) {
+            if (e instanceof TimeoutError) {
                 this.logger.warn(e.message);
                 this.requireLocalNode().emit("shuffleTimeout", "incoming", remotePeer);
-            })
-            .catch((error) => {
-                this.logger.error("An unknown error occurred on an incoming shuffle", error);
+            } else {
+                this.logger.error("An unknown error occurred on an incoming shuffle", e);
                 this.requireLocalNode().emit("shuffleError", "incoming", remotePeer, "unknown");
-            })
-            .finally(() => {
-                incomingShuffleState.close();
-                channel.close();
-            });
+            }
+        } finally {
+            channel.close();
+        }
     }
 
     private requireLocalNode(): CyclonNode {

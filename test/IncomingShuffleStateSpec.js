@@ -1,6 +1,7 @@
 'use strict';
 
-const Promise = require("bluebird");
+const {TimeoutError} = require("cyclon.p2p-common");
+
 const {IncomingShuffleState} = require("../lib/IncomingShuffleState.js");
 const ClientMocks = require("./ClientMocks");
 
@@ -47,44 +48,28 @@ describe("The Incoming ShuffleState", function () {
                 });
             });
 
-            it("delegates to the node to handle the request, then sends the response via the data channel", function (done) {
-                incomingShuffleState.processShuffleRequest(channel)
-                    .then(function(result) {
-                        expect(localCyclonNode.handleShuffleRequest).toHaveBeenCalledWith(SOURCE_POINTER, REQUEST_PAYLOAD);
-                        expect(channel.send).toHaveBeenCalledWith("shuffleResponse", RESPONSE_PAYLOAD);
-                        expect(result).toBe(channel);
-                        done();
-                    });
+            it("delegates to the node to handle the request, then sends the response via the data channel", async () => {
+                await incomingShuffleState.processShuffleRequest(channel);
+                expect(localCyclonNode.handleShuffleRequest).toHaveBeenCalledWith(SOURCE_POINTER, REQUEST_PAYLOAD);
+                expect(channel.send).toHaveBeenCalledWith("shuffleResponse", RESPONSE_PAYLOAD);
             });
         });
 
         describe("and a timeout occurs waiting for the request", function(){
             let timeoutError;
 
-            beforeEach(function(done) {
-                timeoutError = new Promise.TimeoutError();
+            beforeEach(async () => {
+                timeoutError = new TimeoutError('timeout');
                 channel.receive.and.returnValue(Promise.reject(timeoutError));
-                incomingShuffleState.processShuffleRequest(channel)
-                    .catch(Promise.TimeoutError, done);
+                try {
+                    await incomingShuffleState.processShuffleRequest(channel);
+                    fail();
+                } catch (e) {
+                    expect(e).toBe(timeoutError);
+                }
             });
 
             it("does not attempt to handle the request", function() {
-                expect(localCyclonNode.handleShuffleRequest).not.toHaveBeenCalled();
-            });
-        });
-
-        describe("and cancel is called before the request arrives", function() {
-
-            let cancellationError;
-
-            beforeEach(function(done) {
-                cancellationError = new Promise.CancellationError();
-                channel.receive.and.returnValue(Promise.reject(cancellationError));
-                incomingShuffleState.processShuffleRequest(channel)
-                    .catch(Promise.CancellationError, done).cancel();
-            });
-
-            it("doesn't call handleShuffleRequest", function() {
                 expect(localCyclonNode.handleShuffleRequest).not.toHaveBeenCalled();
             });
         });
@@ -93,10 +78,9 @@ describe("The Incoming ShuffleState", function () {
     describe("when waiting for the response acknowledgement", function() {
 
         describe("and everything succeeds", function() {
-            beforeEach(function(done) {
+            beforeEach(async () => {
                 channel.receive.and.returnValue(Promise.resolve(null));
-                incomingShuffleState.waitForResponseAcknowledgement(channel)
-                    .then(done);
+                await incomingShuffleState.waitForResponseAcknowledgement(channel);
             });
 
             it("delegates to the messaging utilities to receive the acknowledgement", function() {
@@ -106,58 +90,10 @@ describe("The Incoming ShuffleState", function () {
 
         describe("and a timeout occurs", function() {
 
-            it("logs a warning and resolves", function(done) {
-                channel.receive.and.returnValue(Promise.reject(new Promise.TimeoutError()));
-                incomingShuffleState.waitForResponseAcknowledgement(channel)
-                    .then(function() {
-                        expect(loggingService.warn).toHaveBeenCalled();
-                        done();
-                    });
-            });
-        });
-
-        describe("and cancel is called before the acknowledgement arrives", function() {
-            let cancellationError;
-
-            it("rejects with the cancellation error", function(done) {
-                cancellationError = new Promise.CancellationError();
-                channel.receive.and.returnValue(Promise.reject(cancellationError));
-                incomingShuffleState.waitForResponseAcknowledgement(channel)
-                    .catch(Promise.CancellationError, done);
-            });
-        });
-    });
-
-    describe("when cancelling", function() {
-
-        let lastOutstandingPromise;
-
-        beforeEach(function() {
-            lastOutstandingPromise = ClientMocks.mockPromise();
-            channel.receive.and.returnValue(lastOutstandingPromise);
-            incomingShuffleState.processShuffleRequest(channel)
-                .then(successCallback).catch(failureCallback);
-        });
-
-        describe("and the last outstanding promise is pending", function() {
-            beforeEach(function() {
-                lastOutstandingPromise.isPending.and.returnValue(true);
-                incomingShuffleState.cancel();
-            });
-
-            it("cancels the latest outstanding promise", function() {
-                expect(lastOutstandingPromise.cancel).toHaveBeenCalled();
-            });
-        });
-
-        describe("and the last outstanding promise is not pending", function() {
-            beforeEach(function() {
-                lastOutstandingPromise.isPending.and.returnValue(false);
-                incomingShuffleState.cancel();
-            });
-
-            it("doesn't cancel the latest outstanding promise", function() {
-                expect(lastOutstandingPromise.cancel).not.toHaveBeenCalled();
+            it("logs a warning and resolves", async () => {
+                channel.receive.and.returnValue(Promise.reject(new TimeoutError('timeout')));
+                await incomingShuffleState.waitForResponseAcknowledgement(channel);
+                expect(loggingService.warn).toHaveBeenCalled();
             });
         });
     });

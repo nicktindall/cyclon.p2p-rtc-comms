@@ -1,6 +1,6 @@
 'use strict';
 
-const Promise = require("bluebird");
+const {TimeoutError} = require("cyclon.p2p-common");
 const {OutgoingShuffleState} = require("../lib/OutgoingShuffleState");
 const ClientMocks = require("./ClientMocks");
 
@@ -60,10 +60,15 @@ describe("The Outgoing ShuffleState", function () {
 
             describe("and a response is not received before the timeout", function () {
 
-                beforeEach(function (done) {
-                    channel.receive.and.returnValue(Promise.reject(new Promise.TimeoutError()));
-                    outgoingShuffleState.processShuffleResponse()
-                        .catch(Promise.TimeoutError, done);
+                beforeEach(async () => {
+                    let timeoutError = new TimeoutError('timeout');
+                    channel.receive.and.returnValue(Promise.reject(timeoutError));
+                    try {
+                        await outgoingShuffleState.processShuffleResponse();
+                        fail();
+                    } catch (e) {
+                        expect(e).toBe(timeoutError);
+                    }
                 });
 
                 it("should not attempt to handle a response", function () {
@@ -73,9 +78,9 @@ describe("The Outgoing ShuffleState", function () {
 
             describe("and a response is received before timeout", function () {
 
-                beforeEach(function (done) {
+                beforeEach(async () => {
                     channel.receive.and.returnValue(Promise.resolve(RESPONSE_PAYLOAD));
-                    outgoingShuffleState.processShuffleResponse().then(done);
+                    await outgoingShuffleState.processShuffleResponse();
                 });
 
                 it("should delegate to the local node to handle the response", function () {
@@ -87,27 +92,15 @@ describe("The Outgoing ShuffleState", function () {
         describe("when sending a response acknowledgement", function () {
 
             describe("and everything succeeds", function () {
-                beforeEach(function (done) {
+                beforeEach(async () => {
                     asyncExecService.setTimeout.and.callFake(function(callback) {
                         callback();
                     });
-                    outgoingShuffleState.sendResponseAcknowledgement().then(done);
+                    await outgoingShuffleState.sendResponseAcknowledgement();
                 });
 
                 it("sends the acknowledgement over the channel", function () {
                     expect(channel.send).toHaveBeenCalledWith("shuffleResponseAcknowledgement");
-                });
-            });
-
-            describe("and cancel is called before the resolve happens", function() {
-                beforeEach(function(done) {
-                    outgoingShuffleState.sendResponseAcknowledgement()
-                        .catch(Promise.CancellationError, done)
-                        .cancel();
-                });
-
-                it("clears the resolve timeout", function() {
-                    expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(TIMEOUT_ID);
                 });
             });
         });
@@ -125,39 +118,6 @@ describe("The Outgoing ShuffleState", function () {
 
             it("clears the channel closing timeout", function() {
                 expect(asyncExecService.clearTimeout).toHaveBeenCalledWith(channelClosingTimeoutId);
-            });
-        });
-
-        describe("when cancelling", function() {
-
-            let lastOutstandingPromise;
-
-            beforeEach(function() {
-                lastOutstandingPromise = ClientMocks.mockPromise();
-                channel.receive.and.returnValue(lastOutstandingPromise);
-                outgoingShuffleState.processShuffleResponse();
-            });
-
-            describe("and the last outstanding promise is pending", function() {
-                beforeEach(function() {
-                    lastOutstandingPromise.isPending.and.returnValue(true);
-                    outgoingShuffleState.cancel();
-                });
-
-                it("cancels the latest outstanding promise", function() {
-                    expect(lastOutstandingPromise.cancel).toHaveBeenCalled();
-                });
-            });
-
-            describe("and the last outstanding promise is not pending", function() {
-                beforeEach(function() {
-                    lastOutstandingPromise.isPending.and.returnValue(false);
-                    outgoingShuffleState.cancel();
-                });
-
-                it("doesn't cancel the latest outstanding promise", function() {
-                    expect(lastOutstandingPromise.cancel).not.toHaveBeenCalled();
-                });
             });
         });
     });

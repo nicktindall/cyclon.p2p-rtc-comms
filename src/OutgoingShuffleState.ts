@@ -1,4 +1,3 @@
-import {Promise} from 'bluebird';
 import {CyclonNode, CyclonNodePointer} from 'cyclon.p2p';
 import {AsyncExecService, Logger} from 'cyclon.p2p-common';
 import {Channel} from 'cyclon.p2p-rtc-client/lib/Channel';
@@ -7,7 +6,6 @@ const SHUFFLE_RESPONSE_TIMEOUT_MS: number = 30000;
 
 export class OutgoingShuffleState {
 
-    private lastOutstandingPromise?: Promise<any>;
     private channelClosingTimeoutId?: number;
     private channel?: Channel;
 
@@ -38,21 +36,17 @@ export class OutgoingShuffleState {
     /**
      * Receive and process a shuffle response
      */
-    processShuffleResponse(): Promise<void> {
-        this.lastOutstandingPromise = this.requireChannel().receive("shuffleResponse", SHUFFLE_RESPONSE_TIMEOUT_MS)
-            .then((shuffleResponseMessage) => {
-                this.logger.debug("Received shuffle response from " + this.destinationNodePointer.id + " : " + JSON.stringify(shuffleResponseMessage));
-                this.fromNode.handleShuffleResponse(this.destinationNodePointer, shuffleResponseMessage);
-            });
-
-        return this.lastOutstandingPromise;
+    async processShuffleResponse(): Promise<void> {
+        const shuffleResponseMessage = await this.requireChannel().receive("shuffleResponse", SHUFFLE_RESPONSE_TIMEOUT_MS);
+        this.logger.debug("Received shuffle response from " + this.destinationNodePointer.id + " : " + JSON.stringify(shuffleResponseMessage));
+        this.fromNode.handleShuffleResponse(this.destinationNodePointer, shuffleResponseMessage);
     }
 
     /**
      * Send an acknowledgement we received the response
      */
-    sendResponseAcknowledgement(): Promise<void> {
-        this.lastOutstandingPromise = new Promise((resolve) => {
+    async sendResponseAcknowledgement(): Promise<void> {
+        await new Promise((resolve) => {
             this.requireChannel().send("shuffleResponseAcknowledgement");
 
             //
@@ -61,14 +55,7 @@ export class OutgoingShuffleState {
             this.channelClosingTimeoutId = this.asyncExecService.setTimeout(() => {
                 resolve();
             }, 3000);
-        })
-        .cancellable()
-        .catch(Promise.CancellationError, (e) => {
-            this.clearChannelClosingTimeout();
-            throw e;
         });
-
-        return this.lastOutstandingPromise;
     }
 
     /**
@@ -79,16 +66,6 @@ export class OutgoingShuffleState {
             this.channel.close();
         }
         this.clearChannelClosingTimeout();
-        delete this.lastOutstandingPromise;
-    }
-
-    /**
-     * Cancel any currently outstanding promises
-     */
-    cancel(): void {
-        if (this.lastOutstandingPromise && this.lastOutstandingPromise.isPending()) {
-            this.lastOutstandingPromise.cancel();
-        }
     }
 
     private clearChannelClosingTimeout(): void {

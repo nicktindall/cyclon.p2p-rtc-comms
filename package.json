@@ -37,9 +37,8 @@
     "typescript": "^3.6.4"
   },
   "dependencies": {
-    "bluebird": "2.3.x",
-    "cyclon.p2p": "^0.1.18",
-    "cyclon.p2p-common": "^0.1.8",
-    "cyclon.p2p-rtc-client": "^0.1.37"
+    "cyclon.p2p": "^1.0.0",
+    "cyclon.p2p-common": "^0.1.11",
+    "cyclon.p2p-rtc-client": "^1.0.0"
   }
 }
