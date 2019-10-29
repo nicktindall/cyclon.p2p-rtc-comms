@@ -1,0 +1,1 @@
+export const DEFAULT_ROOMS_TO_JOIN = ['CyclonWebRTC'];

@@ -12,6 +12,7 @@ import {
 } from 'cyclon.p2p-rtc-client';
 import {SignallingServerBootstrap} from './SignallingServerBootstrap';
 import {SignallingServerSpec} from 'cyclon.p2p-rtc-client/lib/SignallingServerSpec';
+import {DEFAULT_ROOMS_TO_JOIN} from './Defaults';
 
 interface BuilderResult {
     comms: Comms,
@@ -27,6 +28,7 @@ export class Builder {
     private reconnectDelayInMillis?: number;
     private channelStateTimeoutMillis?: number;
     private iceServers?: RTCIceServer[];
+    private roomsToJoin?: string[];
 
     withLogger(logger: Logger): Builder {
         this.logger = logger;
@@ -58,6 +60,11 @@ export class Builder {
         return this;
     }
 
+    joiningRooms(roomsToJoin: string[]): Builder {
+        this.roomsToJoin = roomsToJoin;
+        return this;
+    }
+
     build(): BuilderResult {
         if (!this.result) {
             this.result = this.doBuild();
@@ -76,9 +83,13 @@ export class Builder {
             .build();
         const shuffleStateFactory = new ShuffleStateFactory(this.getLogger(), asyncExecService());
         return {
-            comms: new WebRTCComms(rtcBuilderResult.rtc, shuffleStateFactory, this.getLogger()),
+            comms: new WebRTCComms(rtcBuilderResult.rtc, shuffleStateFactory, this.getLogger(), this.getRoomsToJoin()),
             bootstrap: new SignallingServerBootstrap(rtcBuilderResult.signallingSocket, new HttpRequestService())
         }
+    }
+
+    private getRoomsToJoin() {
+        return this.roomsToJoin === undefined ? DEFAULT_ROOMS_TO_JOIN : this.roomsToJoin;
     }
 
     private getIceServers() {

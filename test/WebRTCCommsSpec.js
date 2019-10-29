@@ -19,6 +19,7 @@ describe("The WebRTC Comms layer", function () {
     const CYCLON_SHUFFLE_CHANNEL_TYPE = "cyclonShuffle";
     const REMOTE_POINTER = "REMOTE_POINTER";
     const INCOMING_ERROR = "INCOMING_ERROR";
+    const ROOMS_TO_JOIN = ['aaa', 'bbb', 'ccc'];
 
     let comms,
         channel,
@@ -46,7 +47,9 @@ describe("The WebRTC Comms layer", function () {
         outgoingShuffleState = createSucceedingOutgoingShuffleState();
         incomingShuffleState = createSucceedingIncomingShuffleState();
         logger = ClientMocks.mockLoggingService();
-        metadataProviders = {something : function() {return ""}};
+        metadataProviders = {
+            something: () => ""
+        };
 
         destinationNodePointer = createCacheEntry("destinationNodePointer", 12);
         shuffleSet = [createCacheEntry("a", 456), createCacheEntry("b", 123), createCacheEntry("c", 222)];
@@ -61,93 +64,105 @@ describe("The WebRTC Comms layer", function () {
         shuffleStateFactory.createOutgoingShuffleState.and.returnValue(outgoingShuffleState);
         shuffleStateFactory.createIncomingShuffleState.and.returnValue(incomingShuffleState);
 
-        comms = new WebRTCComms(rtc, shuffleStateFactory, logger);
+        comms = new WebRTCComms(rtc, shuffleStateFactory, logger, ROOMS_TO_JOIN);
     });
 
-    describe("when initializing", function () {
+    describe('constructor', () => {
 
-        beforeEach(function() {
+        it('throws an error when no rooms to join are specified', () => {
+            try {
+                new WebRTCComms(localCyclonNode, metadataProviders, []);
+                fail('Constructor allowed empty rooms list');
+            } catch (e) {
+                expect(e).toEqual(new Error('Must specify at least one room to join'));
+            }
+        });
+    });
+
+    describe("when initializing", () => {
+
+        beforeEach(() => {
             comms.initialize(localCyclonNode, metadataProviders);
         });
 
-        it("should initialize the RTC layer", function () {
-            expect(rtc.connect).toHaveBeenCalledWith(metadataProviders, ["CyclonWebRTC"]);
+        it("should initialize the RTC layer", () => {
+            expect(rtc.connect).toHaveBeenCalledWith(metadataProviders, ROOMS_TO_JOIN);
         });
 
-        it("should add a listener for incoming shuffle channels", function() {
+        it("should add a listener for incoming shuffle channels", () => {
             expect(rtc.onChannel).toHaveBeenCalledWith("cyclonShuffle", jasmine.any(Function));
         });
     });
 
-    describe("when cyclon shuffle errors occur on the RTC service", function() {
+    describe("when cyclon shuffle errors occur on the RTC service", () => {
 
-        beforeEach(function() {
+        beforeEach(() => {
             rtc = new events.EventEmitter();
             rtc.onChannel = jasmine.createSpy();
             rtc.connect = jasmine.createSpy();
-            comms = new WebRTCComms(rtc, shuffleStateFactory, logger);
+            comms = new WebRTCComms(rtc, shuffleStateFactory, logger, ROOMS_TO_JOIN);
             comms.initialize(localCyclonNode, metadataProviders);
         });
 
-        describe("on incomingTimeout", function() {
+        describe("on incomingTimeout", () => {
 
-            it("emits an incoming shuffle timeout event for cyclon channels", function() {
+            it("emits an incoming shuffle timeout event for cyclon channels", () => {
                 rtc.emit("incomingTimeout", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER);
                 expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleTimeout", "incoming", REMOTE_POINTER);
             });
 
-            it("emits no incoming shuffle timeout event for non-cyclon channels", function() {
+            it("emits no incoming shuffle timeout event for non-cyclon channels", () => {
                 rtc.emit("incomingTimeout", "otherChannelType", REMOTE_POINTER);
                 expect(localCyclonNode.emit).not.toHaveBeenCalled();
             });
         });
 
-        describe("on incomingError", function() {
+        describe("on incomingError", () => {
 
-            it("emits an incoming shuffleError event for cyclon channels", function() {
+            it("emits an incoming shuffleError event for cyclon channels", () => {
                 rtc.emit("incomingError", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER, INCOMING_ERROR);
                 expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleError", "incoming", REMOTE_POINTER, INCOMING_ERROR);
             });
 
-            it("emits no incoming shuffleError event for non-cyclon channels", function() {
+            it("emits no incoming shuffleError event for non-cyclon channels", () => {
                 rtc.emit("incomingError", "otherChannelType", REMOTE_POINTER, INCOMING_ERROR);
                 expect(localCyclonNode.emit).not.toHaveBeenCalled();
             });
         });
 
-        describe("on offerReceived", function() {
+        describe("on offerReceived", () => {
 
-            it("emits an incoming shuffleStarted event for cyclon channels", function() {
+            it("emits an incoming shuffleStarted event for cyclon channels", () => {
                 rtc.emit("offerReceived", CYCLON_SHUFFLE_CHANNEL_TYPE, REMOTE_POINTER);
                 expect(localCyclonNode.emit).toHaveBeenCalledWith("shuffleStarted", "incoming", REMOTE_POINTER);
             });
 
-            it("emits no incoming shuffleStarted event for non-cyclon channels", function() {
+            it("emits no incoming shuffleStarted event for non-cyclon channels", () => {
                 rtc.emit("offerReceived", "otherChannelType", REMOTE_POINTER);
                 expect(localCyclonNode.emit).not.toHaveBeenCalled();
             });
         });
     });
 
-    describe("before sending a shuffle request", function () {
+    describe("before sending a shuffle request", () => {
 
-        beforeEach(function () {
+        beforeEach(() => {
             comms.initialize(localCyclonNode, metadataProviders);
             comms.sendShuffleRequest(destinationNodePointer, shuffleSet);
         });
 
-        it("should create a new outgoing shuffle state", function () {
+        it("should create a new outgoing shuffle state", () => {
             expect(shuffleStateFactory.createOutgoingShuffleState).toHaveBeenCalledWith(localCyclonNode, destinationNodePointer, shuffleSet);
         });
     });
 
-    describe("when sending a shuffle request", function () {
+    describe("when sending a shuffle request", () => {
 
-        beforeEach(function() {
+        beforeEach(() => {
             comms.initialize(localCyclonNode, metadataProviders);
         });
 
-        describe("and everything succeeds", function () {
+        describe("and everything succeeds", () => {
             it("should perform the peer exchange then cleanup resources when the offer is created successfully", async () => {
                 await comms.sendShuffleRequest(destinationNodePointer, shuffleSet);
 
@@ -158,16 +173,16 @@ describe("The WebRTC Comms layer", function () {
                 expect(outgoingShuffleState.processShuffleResponse).toHaveBeenCalledWith();
                 expect(outgoingShuffleState.sendResponseAcknowledgement).toHaveBeenCalledWith();
 
-                        // Clean up occurred
+                // Clean up occurred
                 expect(outgoingShuffleState.close).toHaveBeenCalled();
             });
         });
 
-        it("should not send the request when the channel does not open successfully", function (done) {
+        it("should not send the request when the channel does not open successfully", (done) => {
 
             rtc.openChannel.and.returnValue(Promise.reject(new Error("bad")));
             comms.sendShuffleRequest(localCyclonNode, destinationNodePointer, shuffleSet)
-                .catch(function() {
+                .catch(() => {
                     expect(outgoingShuffleState.sendShuffleRequest).not.toHaveBeenCalled();
                     // Clean up occurred
                     expect(outgoingShuffleState.close).toHaveBeenCalled();
@@ -176,37 +191,37 @@ describe("The WebRTC Comms layer", function () {
         });
     });
 
-    describe("when creating a new pointer", function() {
+    describe("when creating a new pointer", () => {
 
-        it("delegates to the RTC service", function() {
+        it("delegates to the RTC service", () => {
             expect(comms.createNewPointer()).toBe(CREATE_NEW_POINTER_RESULT);
         });
     });
 
-    describe("when getting the local ID", function() {
+    describe("when getting the local ID", () => {
 
-        it("delegates to the RTC service", function() {
+        it("delegates to the RTC service", () => {
             expect(comms.getLocalId()).toBe(LOCAL_ID);
         });
     });
 
-    describe("when handling an incoming shuffle", function () {
+    describe("when handling an incoming shuffle", () => {
 
-        beforeEach(function() {
+        beforeEach(() => {
             comms.initialize(localCyclonNode, metadataProviders);
         });
 
-        describe("before processing the shuffle request", function () {
-            beforeEach(function () {
+        describe("before processing the shuffle request", () => {
+            beforeEach(() => {
                 comms.handleIncomingShuffle(channel).then(successCallback).catch(failureCallback);
             });
 
-            it("should create a new incoming shuffle state", function () {
+            it("should create a new incoming shuffle state", () => {
                 expect(shuffleStateFactory.createIncomingShuffleState).toHaveBeenCalledWith(localCyclonNode, destinationNodePointer);
             });
         });
 
-        describe("and everything succeeds", function () {
+        describe("and everything succeeds", () => {
 
             beforeEach(async () => {
                 await comms.handleIncomingShuffle(channel);
@@ -221,17 +236,17 @@ describe("The WebRTC Comms layer", function () {
             });
         });
 
-        describe("and a timeout occurs waiting for the shuffle request", function () {
+        describe("and a timeout occurs waiting for the shuffle request", () => {
 
-            var incomingShufflePromise;
+            let incomingShufflePromise;
 
-            beforeEach(function () {
+            beforeEach(() => {
                 incomingShuffleState.processShuffleRequest.and.returnValue(Promise.reject(new TimeoutError('timeout')));
                 incomingShufflePromise = comms.handleIncomingShuffle(channel);
             });
 
-            it("should clean up it state and not wait for the acknowledgement", function (done) {
-                incomingShufflePromise.then(function() {
+            it("should clean up it state and not wait for the acknowledgement", (done) => {
+                incomingShufflePromise.then(() => {
                     expect(incomingShuffleState.waitForResponseAcknowledgement).not.toHaveBeenCalled();
 
                     // Close should still be called
@@ -243,7 +258,7 @@ describe("The WebRTC Comms layer", function () {
     });
 
     function createSucceedingOutgoingShuffleState(name) {
-        var outgoingShuffleState = ClientMocks.mockOutgoingShuffleState(name);
+        const outgoingShuffleState = ClientMocks.mockOutgoingShuffleState(name);
         outgoingShuffleState.sendShuffleRequest.and.returnValue(Promise.resolve(SEND_SHUFFLE_REQUEST_RESULT));
         outgoingShuffleState.processShuffleResponse.and.returnValue(Promise.resolve(PROCESS_SHUFFLE_RESPONSE_RESULT));
         outgoingShuffleState.sendResponseAcknowledgement.and.returnValue(Promise.resolve(SEND_RESPONSE_ACKNOWLEDGEMENT_RESULT));
@@ -251,7 +266,7 @@ describe("The WebRTC Comms layer", function () {
     }
 
     function createSucceedingIncomingShuffleState() {
-        var incomingShuffleState = ClientMocks.mockIncomingShuffleState();
+        const incomingShuffleState = ClientMocks.mockIncomingShuffleState();
         incomingShuffleState.processShuffleRequest.and.returnValue(Promise.resolve(PROCESS_SHUFFLE_REQUEST_RESULT));
         incomingShuffleState.waitForResponseAcknowledgement.and.returnValue(Promise.resolve(WAIT_FOR_RESPONSE_ACKNOWLEDGEMENT_RESULT));
         return incomingShuffleState;
