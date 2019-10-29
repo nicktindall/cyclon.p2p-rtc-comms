@@ -82,9 +82,10 @@ export class Builder {
             .withSignallingServerReconnectDelay(this.getReconnectDelay())
             .build();
         const shuffleStateFactory = new ShuffleStateFactory(this.getLogger(), asyncExecService());
+        const roomsToJoin = this.getRoomsToJoin();
         return {
-            comms: new WebRTCComms(rtcBuilderResult.rtc, shuffleStateFactory, this.getLogger(), this.getRoomsToJoin()),
-            bootstrap: new SignallingServerBootstrap(rtcBuilderResult.signallingSocket, new HttpRequestService())
+            comms: new WebRTCComms(rtcBuilderResult.rtc, shuffleStateFactory, this.getLogger(), roomsToJoin),
+            bootstrap: new SignallingServerBootstrap(rtcBuilderResult.signallingSocket, new HttpRequestService(), roomsToJoin)
         }
     }
 

@@ -6,12 +6,16 @@ import {CyclonNode, CyclonNodePointer} from 'cyclon.p2p';
 import {SignallingServerSpec} from 'cyclon.p2p-rtc-client/lib/SignallingServerSpec';
 import {allSettled, SettledPromise} from './PromiseTools';
 
-const API_PATH = "./api/peers";
+const API_PATH = './api/peers';
 
 export class SignallingServerBootstrap {
 
     constructor(private readonly signallingSocket: SignallingSocket,
-                private readonly httpRequestService: HttpRequestService) {
+                private readonly httpRequestService: HttpRequestService,
+                private readonly roomsToBootstrapFrom: string[]) {
+        if (!(roomsToBootstrapFrom && roomsToBootstrapFrom.length > 0)) {
+            throw new Error('Must specify at least one room to bootstrap from');
+        }
     }
 
     /**
@@ -22,8 +26,9 @@ export class SignallingServerBootstrap {
         const serverSpecs = this.signallingSocket.getCurrentServerSpecs();
         if (serverSpecs.length > 0) {
 
+            const roomToSampleFrom = this.roomsToBootstrapFrom[Math.floor(Math.random() * this.roomsToBootstrapFrom.length)];
             const specPromises: Promise<CyclonNodePointer[]>[] = serverSpecs.map((serverSpec) => {
-                return this.getInitialPeerSetFromServer(cyclonNode, serverSpec, limit);
+                return this.getInitialPeerSetFromServer(cyclonNode, serverSpec, limit, roomToSampleFrom);
             });
 
             return allSettled(specPromises).then((results) => {
@@ -32,7 +37,7 @@ export class SignallingServerBootstrap {
             });
         }
 
-        return Promise.reject(new Error("Not connected to any signalling servers, can't bootstrap"));
+        return Promise.reject(new Error('Not connected to any signalling servers, can\'t bootstrap'));
     }
 
     private static collateSuccessfulResults(arrayOfPromises: SettledPromise<CyclonNodePointer[]>[]): CyclonNodePointer[] {
@@ -40,23 +45,21 @@ export class SignallingServerBootstrap {
             // @ts-ignore
             if (next.status === 'fulfilled') {
                 return current.concat(next.value as CyclonNodePointer[]);
-            }
-            else {
+            } else {
                 return current;
             }
         }, []);
     }
 
     private static deDuplicatePeerList(arrayOfPeers: CyclonNodePointer[]): CyclonNodePointer[] {
-        const peerMap: { [id:string]: CyclonNodePointer } = {};
+        const peerMap: { [id: string]: CyclonNodePointer } = {};
 
         arrayOfPeers.forEach(function (peer) {
             if (peerMap.hasOwnProperty(peer.id)) {
                 if (peerMap[peer.id].seq < peer.seq) {
                     peerMap[peer.id] = peer;
                 }
-            }
-            else {
+            } else {
                 peerMap[peer.id] = peer;
             }
         });
@@ -68,8 +71,8 @@ export class SignallingServerBootstrap {
         return uniquePeers;
     }
 
-    private async getInitialPeerSetFromServer(cyclonNode: CyclonNode, serverSpec: SignallingServerSpec, limit: number): Promise<CyclonNodePointer[]> {
-        const response = await this.httpRequestService.get(SignallingServerBootstrap.generateUrl(serverSpec.signallingApiBase, limit));
+    private async getInitialPeerSetFromServer(cyclonNode: CyclonNode, serverSpec: SignallingServerSpec, limit: number, roomToSampleFrom: string): Promise<CyclonNodePointer[]> {
+        const response = await this.httpRequestService.get(SignallingServerBootstrap.generateUrl(serverSpec.signallingApiBase, limit, roomToSampleFrom));
         return Object.keys(response).filter((peerId) => {
             return peerId !== cyclonNode.getId();
         }).map((peerId) => {
@@ -77,9 +80,8 @@ export class SignallingServerBootstrap {
         });
     }
 
-    // TODO room(s) should be configurable
-    private static generateUrl(apiBase: string, limit: number): string {
+    private static generateUrl(apiBase: string, limit: number, room: string): string {
         //noinspection JSCheckFunctionSignatures
-        return url.resolve(apiBase, API_PATH) + "?room=CyclonWebRTC&limit=" + limit + "&nocache=" + new Date().getTime();
+        return url.resolve(apiBase, API_PATH) + `?room=${room}&limit=${limit}&nocache=${new Date().getTime()}`;
     }
 }

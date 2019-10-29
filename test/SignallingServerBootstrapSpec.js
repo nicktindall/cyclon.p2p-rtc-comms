@@ -1,11 +1,11 @@
 'use strict';
 
-var {SignallingServerBootstrap} = require("../lib/SignallingServerBootstrap");
-var ClientMocks = require("./ClientMocks");
+const {SignallingServerBootstrap} = require("../lib/SignallingServerBootstrap");
+const ClientMocks = require("./ClientMocks");
 
-describe("The signalling server bootstrap", function () {
+describe("The signalling server bootstrap", () => {
 
-    var SIGNALLING_SERVERS = [
+    const SIGNALLING_SERVERS = [
         {
             signallingApiBase: "http://one"
         },
@@ -14,20 +14,21 @@ describe("The signalling server bootstrap", function () {
         }
     ];
 
-    var NODE_ID = "NODE_ID",
-        LIMIT = 50;
+    const NODE_ID = "NODE_ID",
+        LIMIT = 50,
+        ROOMS_TO_BOOTSTRAP_FROM = ['theroom', 'theotherroom'];
 
-    var bootstrap,
+    let bootstrap,
         signallingSocket,
         httpRequestService,
         cyclonNode,
         serverOneResponse,
         serverTwoResponse;
 
-    var successCallback,
+    let successCallback,
         failureCallback;
 
-    beforeEach(function () {
+    beforeEach(() => {
         successCallback = ClientMocks.createSuccessCallback();
         failureCallback = ClientMocks.createFailureCallback();
 
@@ -40,22 +41,32 @@ describe("The signalling server bootstrap", function () {
         //
         signallingSocket.getCurrentServerSpecs.and.returnValue(SIGNALLING_SERVERS);
         cyclonNode.getId.and.returnValue(NODE_ID);
-        httpRequestService.get.and.callFake(function (url) {
+        httpRequestService.get.and.callFake((url) => {
             if (url.indexOf("http://one/api/peers") === 0) {
                 return serverOneResponse;
-            }
-            else if (url.indexOf("http://two/api/peers") === 0) {
+            } else if (url.indexOf("http://two/api/peers") === 0) {
                 return serverTwoResponse;
             }
             throw new Error("Something weird happened");
         });
 
-        bootstrap = new SignallingServerBootstrap(signallingSocket, httpRequestService);
+        bootstrap = new SignallingServerBootstrap(signallingSocket, httpRequestService, ROOMS_TO_BOOTSTRAP_FROM);
     });
 
-    describe("when fetching initial peer sets", function () {
+    describe('constructor', () => {
 
-        it("returns combined results from all servers that respond", function (done) {
+        it('will throw an error if no rooms to bootstrap from are specified', () => {
+            try {
+                new SignallingServerBootstrap(signallingSocket, httpRequestService, []);
+            } catch (e) {
+                expect(e).toEqual(new Error('Must specify at least one room to bootstrap from'));
+            }
+        });
+    });
+
+    describe("when fetching initial peer sets", () => {
+
+        it("returns combined results from all servers that respond", (done) => {
 
             serverOneResponse = Promise.resolve({
                 NODE_ID: {id: NODE_ID},
@@ -66,7 +77,7 @@ describe("The signalling server bootstrap", function () {
                 NODE_ID_TWO: {id: "NODE_ID_TWO"}
             });
 
-            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(function(result) {
+            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then((result) => {
                 expect(result).toEqual([
                     {id: "NODE_ID_ONE"},
                     {id: "NODE_ID_TWO"}
@@ -75,7 +86,7 @@ describe("The signalling server bootstrap", function () {
             });
         });
 
-        it("restricts the number of peers returned to that requested", function (done) {
+        it("restricts the number of peers returned to that requested", (done) => {
 
             serverOneResponse = Promise.resolve({
                 NODE_ID: {id: NODE_ID},
@@ -86,21 +97,38 @@ describe("The signalling server bootstrap", function () {
                 NODE_ID_TWO: {id: "NODE_ID_TWO"}
             });
 
-            bootstrap.getInitialPeerSet(cyclonNode, 1).then(function(result) {
+            bootstrap.getInitialPeerSet(cyclonNode, 1).then((result) => {
                 expect(result.length).toBe(1);
                 done();
             });
         });
 
-        it("returns an empty array when no results are returned", function (done) {
+        it("returns an empty array when no results are returned", (done) => {
 
             serverOneResponse = Promise.reject(new Error("dumb"));
             serverTwoResponse = Promise.reject(new Error("dumber"));
 
-            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then(function(result) {
+            bootstrap.getInitialPeerSet(cyclonNode, LIMIT).then((result) => {
                 expect(result).toEqual([]);
                 done();
             });
+        });
+
+        it('randomly chooses a room to sample from', async () => {
+            const urls = [];
+            httpRequestService.get.and.callFake((url) => {
+                urls.push(url);
+            });
+            let randomSpy = spyOn(Math, 'random');
+            randomSpy.and.returnValue(0.7);
+            await bootstrap.getInitialPeerSet(cyclonNode, 1);
+            expect(urls[0]).toContain(ROOMS_TO_BOOTSTRAP_FROM[1]);
+            expect(urls[1]).toContain(ROOMS_TO_BOOTSTRAP_FROM[1]);
+
+            randomSpy.and.returnValue(0.2);
+            await bootstrap.getInitialPeerSet(cyclonNode, 1);
+            expect(urls[2]).toContain(ROOMS_TO_BOOTSTRAP_FROM[0]);
+            expect(urls[3]).toContain(ROOMS_TO_BOOTSTRAP_FROM[0]);
         });
     });
 });
