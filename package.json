@@ -1,6 +1,6 @@
 {
   "name": "cyclon.p2p-rtc-comms",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A WebRTC communications module for the cyclon.p2p framework",
   "keywords": [
     "webrtc",
